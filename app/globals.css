@@ -145,3 +145,128 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 .z1 .z1-event-description p {
   margin: 0 0 8px;
 }
+
+/* Ticket and door check-in screens. Both are phone-first, one card, no chrome. */
+.z1-ticket-page,
+.z1-checkin {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: #f8f6f3;
+}
+.z1-ticket,
+.z1-checkin-card {
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 26px;
+  box-shadow: 0 20px 60px rgba(28, 18, 18, 0.12);
+  text-align: center;
+}
+.z1-ticket h1 {
+  font-size: clamp(30px, 8vw, 42px);
+  margin: 10px 0 12px;
+}
+.z1-ticket-where,
+.z1-ticket-when {
+  font-size: 13px;
+  margin: 0 0 4px !important;
+}
+.z1-ticket-qr {
+  margin: 26px auto 20px;
+  width: 320px;
+  max-width: 100%;
+}
+.z1-ticket-qr img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+.z1-ticket-meta,
+.z1-checkin-meta {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 18px 0 0;
+  border-top: 1px solid #e5e1df;
+  text-align: left;
+  font-size: 13px;
+}
+.z1-ticket-meta > div,
+.z1-checkin-meta > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.z1-ticket-meta dt,
+.z1-checkin-meta dt {
+  color: #6c6360;
+}
+.z1-ticket-meta dd,
+.z1-checkin-meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+.z1-ticket-note {
+  margin-top: 20px !important;
+  font-size: 11px;
+  color: #6c6360;
+}
+.z1-ticket-note a {
+  text-decoration: underline;
+}
+
+/* The verdict has to be readable at arm's length in a dark venue. */
+.z1-checkin h1 {
+  font-size: clamp(38px, 11vw, 58px);
+  margin: 0 0 14px;
+}
+.z1-checkin--valid .z1-checkin-card {
+  border-top: 10px solid var(--z1-green, #2c9348);
+}
+.z1-checkin--valid h1 {
+  color: var(--z1-green, #2c9348);
+}
+.z1-checkin--used .z1-checkin-card {
+  border-top: 10px solid #d08700;
+}
+.z1-checkin--used h1 {
+  color: #9c6500;
+}
+.z1-checkin--unpaid .z1-checkin-card,
+.z1-checkin--invalid .z1-checkin-card {
+  border-top: 10px solid #9c241a;
+}
+.z1-checkin--unpaid h1,
+.z1-checkin--invalid h1 {
+  color: #9c241a;
+}
+.z1-checkin-event {
+  font: 600 20px/1.3 var(--font-poppins), 'Poppins', sans-serif;
+  margin: 0 0 6px !important;
+}
+.z1-checkin-when {
+  font-size: 13px;
+  color: #6c6360;
+}
+.z1-checkin label {
+  display: block;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 22px;
+}
+.z1-checkin input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 13px;
+  min-height: 48px;
+  font-size: 16px;
+  border: 1px solid #c5bfbb;
+  border-radius: 7px;
+}
+.z1-checkin .z1-submit {
+  margin-top: 18px;
+}

@@ -95,6 +95,58 @@ not in the org that owns the app, distribute the app to the store with custom
 distribution and use the authorization code grant instead — or skip the form and
 leave the Admin credentials unset, which shows a "not connected yet" message.
 
+## Ticket QR check-in
+
+Each ticket in an `Event ticket` order gets its own QR code, scanned at the door
+by staff to validate and burn it.
+
+```
+order paid
+  └─ orders/create webhook ─► /api/webhooks/orders
+                                writes order metafield club.ticket_key (random)
+order email (Liquid)
+  └─ one <img> per ticket ──► /api/ticket/qr?o=&l=&n=&t=&k=
+                                verifies the key, returns a PNG encoding
+                                /checkin/<signed token>
+staff scans
+  └─ /checkin/<token> ───────► passcode gate, then VALID / ALREADY USED / NOT PAID
+                                "Mark checked in" writes club.checked_in
+```
+
+Why the key: notification Liquid can't compute an HMAC, so the email can't sign
+its own URLs. Instead each order gets one unguessable key, and the QR endpoint
+swaps it for a signed token. Without it, guessing an order id would mint a
+working ticket.
+
+Why the passcode: the buyer has the QR, so they can open the check-in URL too.
+Until a device posts `CHECKIN_PASSCODE`, the page shows nothing about the ticket.
+The cookie lasts 12 hours, one shift.
+
+Single use is the point: the first scan records a timestamp in the order's
+`club.checked_in` metafield, and every later scan of that ticket reports
+*already used*, with the time.
+
+### Setup
+
+1. Add `read_orders` and `write_orders` to a new version of the app in the Dev
+   Dashboard, release it, and approve the new scopes on the store. Orders from
+   the last 60 days are covered; `read_all_orders` is only needed for older ones
+   and requires Shopify approval.
+2. Set `TICKET_SECRET` and `CHECKIN_PASSCODE` (see `.env.example`).
+3. Subscribe to the webhook **with this app's credentials**, so the HMAC matches
+   the secret the route verifies against:
+
+   ```bash
+   npm run shopify:webhook          # --list to inspect without creating
+   ```
+
+4. Paste `docs/order-email-snippet.liquid` into Settings → Notifications →
+   Order confirmation → Edit code.
+
+Existing orders placed before the webhook existed have no ticket key, so their
+emails render no QR block. Re-send the notification after the key exists, or
+treat them manually.
+
 ## Local development
 
 ```bash

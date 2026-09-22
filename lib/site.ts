@@ -1,5 +1,6 @@
 /** Store-facing links and copy that are not worth a Shopify round trip. */
 export const SITE = {
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://club.zero1soda.com',
   storeUrl: process.env.NEXT_PUBLIC_STORE_URL || 'https://www.zero1soda.com',
   whatsappUrl:
     process.env.NEXT_PUBLIC_WHATSAPP_URL ||

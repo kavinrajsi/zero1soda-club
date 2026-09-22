@@ -1,0 +1,64 @@
+{%- comment -%}
+  Club Zero1 event tickets — paste into:
+  Shopify admin → Settings → Notifications → Order confirmation → Edit code,
+  inside the email body, after the order summary table.
+
+  One QR per ticket: an order for 3 tickets renders 3 codes, each scanned and
+  checked in separately at the door.
+
+  order.metafields.club.ticket_key is written by the orders/create webhook
+  (/api/webhooks/orders). If it is blank, the block renders nothing — which
+  also means tickets are missing, so check the webhook first.
+{%- endcomment -%}
+
+{%- assign club_url = 'https://club.zero1soda.com' -%}
+{%- assign ticket_key = order.metafields.club.ticket_key -%}
+
+{%- if ticket_key -%}
+  {%- for line in line_items -%}
+    {%- if line.product.type == 'Event ticket' -%}
+      <table style="width:100%;margin:28px 0 0;border-top:1px solid #e5e1df;">
+        <tr>
+          <td style="padding:22px 0 8px;font-family:Helvetica,Arial,sans-serif;">
+            <p style="margin:0;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:#6c6360;">
+              Your tickets
+            </p>
+            <h3 style="margin:6px 0 0;font-size:20px;color:#1c1212;">{{ line.title }}</h3>
+            {%- if line.properties['Venue'] != blank or line.properties['City'] != blank -%}
+              <p style="margin:4px 0 0;font-size:13px;color:#6c6360;">
+                {{ line.properties['Venue'] }}{% if line.properties['City'] != blank %} · {{ line.properties['City'] }}{% endif %}
+              </p>
+            {%- endif -%}
+          </td>
+        </tr>
+
+        {%- for i in (1..line.quantity) -%}
+          <tr>
+            <td align="center" style="padding:18px 0;font-family:Helvetica,Arial,sans-serif;">
+              <img
+                src="{{ club_url }}/api/ticket/qr?o={{ order.id }}&amp;l={{ line.id }}&amp;n={{ i }}&amp;t={{ line.quantity }}&amp;k={{ ticket_key }}&amp;size=240"
+                width="200"
+                height="200"
+                alt="Ticket {{ i }} of {{ line.quantity }}"
+                style="display:block;border:0;border-radius:10px;"
+              />
+              <p style="margin:10px 0 0;font-size:13px;font-weight:600;color:#1c1212;">
+                Ticket {{ i }} of {{ line.quantity }}
+              </p>
+              <p style="margin:4px 0 0;font-size:12px;">
+                <a href="{{ club_url }}/ticket/view?o={{ order.id }}&amp;l={{ line.id }}&amp;n={{ i }}&amp;t={{ line.quantity }}&amp;k={{ ticket_key }}"
+                   style="color:#1c1212;">View this ticket</a>
+              </p>
+            </td>
+          </tr>
+        {%- endfor -%}
+
+        <tr>
+          <td style="padding:6px 0 18px;font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#6c6360;">
+            Show each code at the door. Every ticket is scanned once.
+          </td>
+        </tr>
+      </table>
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
