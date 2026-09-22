@@ -18,20 +18,42 @@ const SNIPPET = 'docs/order-email-snippet.liquid'
 const OUTPUT = 'docs/order-confirmation.merged.liquid'
 
 const FROM_CLIPBOARD = process.argv.includes('--paste')
+const WAIT_SECONDS = 180
+
+const clipboard = () => execFileSync('pbpaste', { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
+const looksLikeTemplate = (text) => text.includes('{%') && text.includes('</html>')
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 let template
 if (FROM_CLIPBOARD) {
-  template = execFileSync('pbpaste', { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 })
-  if (!template.includes('{%') || !template.includes('</html>')) {
-    console.error(
-      'The clipboard does not look like the order confirmation template.\n' +
-        'In Shopify: Settings → Notifications → Order confirmation → Edit code,\n' +
-        'click inside the Email body box, select all, copy, then re-run this.'
-    )
+  template = clipboard()
+
+  // Copying the command itself overwrites the template, so rather than failing,
+  // wait for the copy to happen while the user is in Shopify.
+  if (!looksLikeTemplate(template)) {
+    console.log('Waiting for you to copy the template…')
+    console.log('Shopify → Settings → Notifications → Order confirmation → Edit code,')
+    console.log('click inside the Email body box, then select all and copy.\n')
+
+    const deadline = Date.now() + WAIT_SECONDS * 1000
+    while (Date.now() < deadline) {
+      await sleep(1500)
+      const current = clipboard()
+      if (looksLikeTemplate(current)) {
+        template = current
+        break
+      }
+    }
+  }
+
+  if (!looksLikeTemplate(template)) {
+    console.error(`\nGave up after ${WAIT_SECONDS}s — the clipboard never held the template.`)
+    console.error('Alternative: paste it into docs/order-confirmation.liquid and run without --paste.')
     process.exit(1)
   }
+
   writeFileSync(SOURCE, template)
-  console.log(`Captured the clipboard into ${SOURCE} (${template.split('\n').length} lines).`)
+  console.log(`Captured ${template.split('\n').length} lines into ${SOURCE}.`)
 } else {
   try {
     template = readFileSync(SOURCE, 'utf8')
