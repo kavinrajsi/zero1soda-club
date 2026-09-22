@@ -44,7 +44,25 @@ async function adminToken() {
       grant_type: 'client_credentials',
     }),
   })
-  const payload = await response.json()
+  // Shopify answers OAuth failures with an HTML error page, not JSON.
+  const body = await response.text()
+  let payload
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    const reason = body.match(/<title>([^<]+)<\/title>/)?.[1] || `HTTP ${response.status}`
+    if (/app_not_installed/.test(reason)) {
+      throw new Error(
+        `${reason}\nInstall the app on ${domain} first: Dev Dashboard > your app > Home > Install app.`
+      )
+    }
+    if (/shop_not_permitted/.test(reason)) {
+      throw new Error(
+        `${reason}\nThe client credentials grant needs the app and ${domain} in the same Shopify organization.`
+      )
+    }
+    throw new Error(`Token request failed: ${reason}`)
+  }
   if (!response.ok || !payload.access_token) {
     throw new Error(`Token request failed: ${response.status} ${JSON.stringify(payload)}`)
   }

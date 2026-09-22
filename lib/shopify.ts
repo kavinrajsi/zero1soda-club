@@ -99,12 +99,18 @@ async function adminToken(): Promise<string> {
     cache: 'no-store',
   })
 
-  if (!response.ok) {
-    throw new ShopifyError(`Token request ${response.status}: ${await response.text()}`)
+  // OAuth failures come back as an HTML error page rather than JSON.
+  const body = await response.text()
+  let payload: { access_token?: string; expires_in?: number }
+  try {
+    payload = JSON.parse(body)
+  } catch {
+    const reason = body.match(/<title>([^<]+)<\/title>/)?.[1] || `HTTP ${response.status}`
+    throw new ShopifyError(`Token request failed: ${reason}`)
   }
-
-  const payload = (await response.json()) as { access_token?: string; expires_in?: number }
-  if (!payload.access_token) throw new ShopifyError('Token request returned no access token.')
+  if (!response.ok || !payload.access_token) {
+    throw new ShopifyError(`Token request ${response.status}: no access token returned.`)
+  }
 
   cachedAdminToken = {
     token: payload.access_token,
