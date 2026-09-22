@@ -138,10 +138,21 @@ export async function admin<T>(query: string, variables: Record<string, unknown>
   return unwrap<T>(await response.json(), 'Admin API')
 }
 
+/**
+ * Shopify answers a partially-allowed query with both `data` and `errors` — a
+ * field the token lacks a scope for comes back null rather than failing the
+ * request. Losing the whole page over one optional field is worse than
+ * rendering without it, so partial data wins and the errors are logged.
+ */
 function unwrap<T>(payload: GraphQLResponse<T>, label: string): T {
+  if (payload.data) {
+    if (payload.errors?.length) {
+      console.warn(`[club-zero1] ${label} partial response:`, payload.errors.map((e) => e.message).join('; '))
+    }
+    return payload.data
+  }
   if (payload.errors?.length) {
     throw new ShopifyError(payload.errors.map((error) => error.message).join('; '))
   }
-  if (!payload.data) throw new ShopifyError(`${label} returned no data.`)
-  return payload.data
+  throw new ShopifyError(`${label} returned no data.`)
 }
