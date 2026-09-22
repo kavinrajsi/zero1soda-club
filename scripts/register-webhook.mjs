@@ -18,8 +18,15 @@ const LIST_ONLY = process.argv.includes('--list')
 loadEnvFile('.env.local')
 
 const domain = process.env.SHOPIFY_STORE_DOMAIN
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://club.zero1soda.com'
-const callbackUrl = `${siteUrl.replace(/\/$/, '')}/api/webhooks/orders`
+// Shopify refuses callbacks on any domain attached to the store, which includes
+// club.zero1soda.com, so this defaults to the project's vercel.app alias.
+const base = process.env.WEBHOOK_CALLBACK_BASE || process.env.NEXT_PUBLIC_SITE_URL || ''
+const callbackUrl = `${base.replace(/\/$/, '')}/api/webhooks/orders`
+
+if (!base) {
+  console.error('Set WEBHOOK_CALLBACK_BASE, e.g. https://zero1soda-club-sigma.vercel.app')
+  process.exit(1)
+}
 
 if (!domain) {
   console.error('Set SHOPIFY_STORE_DOMAIN.')

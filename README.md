@@ -140,6 +140,12 @@ Single use is the point: the first scan records a timestamp in the order's
    npm run shopify:webhook          # --list to inspect without creating
    ```
 
+   The callback can't be `club.zero1soda.com`: Shopify rejects any domain
+   attached to the store (`Address cannot be any of the domains: …`). It posts
+   to `WEBHOOK_CALLBACK_BASE`, the project's `*.vercel.app` alias, which serves
+   the same deployment. Only Shopify calls that URL; buyers still see
+   `club.zero1soda.com` in their email.
+
 4. Paste `docs/order-email-snippet.liquid` into Settings → Notifications →
    Order confirmation → Edit code.
 
