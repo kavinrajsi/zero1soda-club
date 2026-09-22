@@ -114,7 +114,7 @@ export default function ClubPage({ events, now, isSample, error }: Props) {
     <>
       {isSample && (
         <p className="z1-sample-banner">
-          Sample data — set SHOPIFY_STORE_DOMAIN and SHOPIFY_STOREFRONT_TOKEN to show live events.
+          Sample data — set SHOPIFY_STORE_DOMAIN and a Storefront API token to show live events.
         </p>
       )}
       {error && <p className="z1-error-banner">Events could not be loaded: {error}</p>}

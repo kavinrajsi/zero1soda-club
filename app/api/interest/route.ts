@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { admin } from '@/lib/shopify'
+import { admin, isAdminConfigured } from '@/lib/shopify'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,7 +55,7 @@ function fail(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
-  if (!process.env.SHOPIFY_ADMIN_TOKEN) {
+  if (!isAdminConfigured()) {
     return fail(
       'The interest list is not connected yet. Please write to hello@zero1soda.com.',
       503

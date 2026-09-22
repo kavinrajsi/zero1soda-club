@@ -4,7 +4,7 @@
  * still missing. Safe to re-run: definitions that already exist are left alone.
  *
  *   SHOPIFY_STORE_DOMAIN=zero1soda.myshopify.com \
- *   SHOPIFY_ADMIN_TOKEN=shpat_xxx \
+ *   SHOPIFY_APP_CLIENT_ID=xxx SHOPIFY_APP_CLIENT_SECRET=xxx \
  *   npm run shopify:setup
  *
  * Pass --check to only report, without creating anything.
@@ -17,12 +17,41 @@ const CHECK_ONLY = process.argv.includes('--check')
 loadEnvFile('.env.local')
 
 const domain = process.env.SHOPIFY_STORE_DOMAIN
-const token = process.env.SHOPIFY_ADMIN_TOKEN
 
-if (!domain || !token) {
-  console.error('Set SHOPIFY_STORE_DOMAIN and SHOPIFY_ADMIN_TOKEN (Admin API access token).')
+if (!domain) {
+  console.error('Set SHOPIFY_STORE_DOMAIN (e.g. zero1soda.myshopify.com).')
   process.exit(1)
 }
+
+if (!process.env.SHOPIFY_ADMIN_TOKEN && !(process.env.SHOPIFY_APP_CLIENT_ID && process.env.SHOPIFY_APP_CLIENT_SECRET)) {
+  console.error(
+    'Set SHOPIFY_APP_CLIENT_ID and SHOPIFY_APP_CLIENT_SECRET (Dev Dashboard app),\n' +
+      'or SHOPIFY_ADMIN_TOKEN if you still have a legacy admin-created custom app.'
+  )
+  process.exit(1)
+}
+
+/** Dev Dashboard apps mint a 24h token from the client credentials grant. */
+async function adminToken() {
+  if (process.env.SHOPIFY_ADMIN_TOKEN) return process.env.SHOPIFY_ADMIN_TOKEN
+
+  const response = await fetch(`https://${domain}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: process.env.SHOPIFY_APP_CLIENT_ID,
+      client_secret: process.env.SHOPIFY_APP_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    }),
+  })
+  const payload = await response.json()
+  if (!response.ok || !payload.access_token) {
+    throw new Error(`Token request failed: ${response.status} ${JSON.stringify(payload)}`)
+  }
+  return payload.access_token
+}
+
+const token = await adminToken()
 
 const DEFINITIONS = [
   { key: 'city', name: 'Event city', type: 'single_line_text_field' },

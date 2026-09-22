@@ -2,19 +2,41 @@ const API_VERSION = process.env.SHOPIFY_STOREFRONT_API_VERSION || '2026-07'
 
 export class ShopifyError extends Error {}
 
-function config() {
+function storeDomain() {
   const domain = process.env.SHOPIFY_STORE_DOMAIN
-  const token = process.env.SHOPIFY_STOREFRONT_TOKEN
-  if (!domain || !token) {
-    throw new ShopifyError(
-      'Missing SHOPIFY_STORE_DOMAIN or SHOPIFY_STOREFRONT_TOKEN. See README.'
-    )
-  }
-  return { domain, token }
+  if (!domain) throw new ShopifyError('Missing SHOPIFY_STORE_DOMAIN. See README.')
+  return domain
+}
+
+/**
+ * Headless channel storefronts issue two tokens. The private one is stronger and
+ * must stay server-side, which is where every call in this app runs; the public
+ * one works too and is the fallback.
+ */
+function storefrontAuth(): Record<string, string> {
+  const privateToken = process.env.SHOPIFY_STOREFRONT_PRIVATE_TOKEN
+  if (privateToken) return { 'Shopify-Storefront-Private-Token': privateToken }
+
+  const publicToken = process.env.SHOPIFY_STOREFRONT_TOKEN
+  if (publicToken) return { 'X-Shopify-Storefront-Access-Token': publicToken }
+
+  throw new ShopifyError(
+    'Missing SHOPIFY_STOREFRONT_PRIVATE_TOKEN or SHOPIFY_STOREFRONT_TOKEN. See README.'
+  )
 }
 
 export function isShopifyConfigured() {
-  return Boolean(process.env.SHOPIFY_STORE_DOMAIN && process.env.SHOPIFY_STOREFRONT_TOKEN)
+  return Boolean(
+    process.env.SHOPIFY_STORE_DOMAIN &&
+      (process.env.SHOPIFY_STOREFRONT_PRIVATE_TOKEN || process.env.SHOPIFY_STOREFRONT_TOKEN)
+  )
+}
+
+export function isAdminConfigured() {
+  return Boolean(
+    process.env.SHOPIFY_ADMIN_TOKEN ||
+      (process.env.SHOPIFY_APP_CLIENT_ID && process.env.SHOPIFY_APP_CLIENT_SECRET)
+  )
 }
 
 type GraphQLResponse<T> = {
@@ -24,20 +46,16 @@ type GraphQLResponse<T> = {
 
 /**
  * Storefront API call. Always runs server-side so the token never reaches the
- * browser, even though Storefront tokens are public-scoped.
+ * browser — required for the private token, good hygiene for the public one.
  */
 export async function storefront<T>(
   query: string,
   variables: Record<string, unknown> = {},
   init: { cache?: RequestCache; revalidate?: number } = {}
 ): Promise<T> {
-  const { domain, token } = config()
-  const response = await fetch(`https://${domain}/api/${API_VERSION}/graphql.json`, {
+  const response = await fetch(`https://${storeDomain()}/api/${API_VERSION}/graphql.json`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': token,
-    },
+    headers: { 'Content-Type': 'application/json', ...storefrontAuth() },
     body: JSON.stringify({ query, variables }),
     cache: init.cache,
     next: init.revalidate === undefined ? undefined : { revalidate: init.revalidate },
@@ -47,25 +65,61 @@ export async function storefront<T>(
     throw new ShopifyError(`Storefront API ${response.status}: ${await response.text()}`)
   }
 
-  const payload = (await response.json()) as GraphQLResponse<T>
-  if (payload.errors?.length) {
-    throw new ShopifyError(payload.errors.map((e) => e.message).join('; '))
+  return unwrap<T>(await response.json(), 'Storefront API')
+}
+
+let cachedAdminToken: { token: string; expiresAt: number } | null = null
+
+/**
+ * Apps created in the Dev Dashboard have no long-lived token: the client
+ * credentials grant mints one that lives 24h. A legacy admin-created app's
+ * static token still works if SHOPIFY_ADMIN_TOKEN is set.
+ */
+async function adminToken(): Promise<string> {
+  const staticToken = process.env.SHOPIFY_ADMIN_TOKEN
+  if (staticToken) return staticToken
+
+  const clientId = process.env.SHOPIFY_APP_CLIENT_ID
+  const clientSecret = process.env.SHOPIFY_APP_CLIENT_SECRET
+  if (!clientId || !clientSecret) throw new ShopifyError('Admin API is not configured.')
+
+  // Refresh a minute early so a token never expires mid-request.
+  if (cachedAdminToken && cachedAdminToken.expiresAt > Date.now() + 60_000) {
+    return cachedAdminToken.token
   }
-  if (!payload.data) throw new ShopifyError('Storefront API returned no data.')
-  return payload.data
+
+  const response = await fetch(`https://${storeDomain()}/admin/oauth/access_token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'client_credentials',
+    }),
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new ShopifyError(`Token request ${response.status}: ${await response.text()}`)
+  }
+
+  const payload = (await response.json()) as { access_token?: string; expires_in?: number }
+  if (!payload.access_token) throw new ShopifyError('Token request returned no access token.')
+
+  cachedAdminToken = {
+    token: payload.access_token,
+    expiresAt: Date.now() + (payload.expires_in ?? 86_399) * 1000,
+  }
+  return cachedAdminToken.token
 }
 
 /** Admin API call. Only used by the interest form; optional. */
 export async function admin<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
-  const domain = process.env.SHOPIFY_STORE_DOMAIN
-  const token = process.env.SHOPIFY_ADMIN_TOKEN
-  if (!domain || !token) throw new ShopifyError('Admin API is not configured.')
-
-  const response = await fetch(`https://${domain}/admin/api/${API_VERSION}/graphql.json`, {
+  const response = await fetch(`https://${storeDomain()}/admin/api/${API_VERSION}/graphql.json`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': token,
+      'X-Shopify-Access-Token': await adminToken(),
     },
     body: JSON.stringify({ query, variables }),
     cache: 'no-store',
@@ -75,10 +129,13 @@ export async function admin<T>(query: string, variables: Record<string, unknown>
     throw new ShopifyError(`Admin API ${response.status}: ${await response.text()}`)
   }
 
-  const payload = (await response.json()) as GraphQLResponse<T>
+  return unwrap<T>(await response.json(), 'Admin API')
+}
+
+function unwrap<T>(payload: GraphQLResponse<T>, label: string): T {
   if (payload.errors?.length) {
-    throw new ShopifyError(payload.errors.map((e) => e.message).join('; '))
+    throw new ShopifyError(payload.errors.map((error) => error.message).join('; '))
   }
-  if (!payload.data) throw new ShopifyError('Admin API returned no data.')
+  if (!payload.data) throw new ShopifyError(`${label} returned no data.`)
   return payload.data
 }

@@ -31,7 +31,7 @@ The app reads five product metafields in the `event` namespace. Create them once
 
 ```bash
 SHOPIFY_STORE_DOMAIN=zero1soda.myshopify.com \
-SHOPIFY_ADMIN_TOKEN=shpat_… \
+SHOPIFY_APP_CLIENT_ID=… SHOPIFY_APP_CLIENT_SECRET=… \
 npm run shopify:setup          # add --check to report without creating
 ```
 
@@ -62,18 +62,37 @@ An event with no `starts_at` is not rendered.
 
 ### 3. Tokens
 
-**Storefront API token** (required) — Admin → Settings → Apps and sales channels
-→ Develop apps → your app → Storefront API. Scopes:
-`unauthenticated_read_product_listings`, `unauthenticated_write_checkouts`.
+Shopify stopped allowing new **admin-created custom apps on 1 January 2026**, so
+`Settings → Apps → Develop apps` is no longer the route. Existing legacy apps
+still work; new credentials come from the Headless channel and the Dev Dashboard.
 
-**Admin API token** (optional, only for the interest form) — same app, Admin API.
-Scopes: `read_customers`, `write_customers`. Without it the form returns a
-"not connected yet" message instead of silently dropping sign-ups.
+**Storefront API token (required)** — Shopify admin → Apps → install the
+**Headless** channel → **Create storefront**. It issues a public and a private
+token and manages its own channel permissions. Put the private one in
+`SHOPIFY_STOREFRONT_PRIVATE_TOKEN` (it is server-side only, which is where every
+call in this app runs); `SHOPIFY_STOREFRONT_TOKEN` takes the public token if you
+prefer. In the storefront's **Storefront API permissions**, keep read access to
+products and inventory and write access to checkouts. Publish event products to
+this Headless storefront, or the API returns nothing.
+
+**Admin API credentials (optional — interest form only)** — Dev Dashboard
+(`dev.shopify.com/dashboard/<org-id>/apps`) → create an app → on a version,
+select scopes `read_customers` and `write_customers` → Release → Install on the
+store. Copy **Client ID** and **Client secret** from the app's Settings into
+`SHOPIFY_APP_CLIENT_ID` / `SHOPIFY_APP_CLIENT_SECRET`. There is no token to copy:
+`lib/shopify.ts` exchanges those credentials for a 24-hour token through the
+client credentials grant and caches it in memory.
+
+The client credentials grant only works when the app and the store are in the
+**same Shopify organization** (`shop_not_permitted` otherwise). If zero1soda is
+not in the org that owns the app, distribute the app to the store with custom
+distribution and use the authorization code grant instead — or skip the form and
+leave the Admin credentials unset, which shows a "not connected yet" message.
 
 ## Local development
 
 ```bash
-cp .env.example .env.local     # fill in SHOPIFY_STORE_DOMAIN + SHOPIFY_STOREFRONT_TOKEN
+cp .env.example .env.local     # fill in SHOPIFY_STORE_DOMAIN + a storefront token
 npm install
 npm run dev                    # http://localhost:3000
 ```
@@ -91,8 +110,9 @@ npm run typecheck   # tsc --noEmit
 ```bash
 npx vercel link        # or import the repo at vercel.com/new
 npx vercel env add SHOPIFY_STORE_DOMAIN production
-npx vercel env add SHOPIFY_STOREFRONT_TOKEN production
-npx vercel env add SHOPIFY_ADMIN_TOKEN production        # optional
+npx vercel env add SHOPIFY_STOREFRONT_PRIVATE_TOKEN production
+npx vercel env add SHOPIFY_APP_CLIENT_ID production      # optional
+npx vercel env add SHOPIFY_APP_CLIENT_SECRET production  # optional
 npx vercel --prod
 ```
 
