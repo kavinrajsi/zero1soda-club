@@ -22,6 +22,8 @@ export type ClubEvent = {
   /** Unix seconds. */
   endsAt: number
   cancelled: boolean
+  /** Unix seconds; bookings stop at this moment. Null means "until it starts". */
+  bookingClosesAt: number | null
   soldOut: boolean
   onlineStoreUrl: string | null
   variants: EventVariant[]

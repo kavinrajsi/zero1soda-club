@@ -32,6 +32,7 @@ const EVENTS_QUERY = /* GraphQL */ `
             { namespace: "event", key: "starts_at" }
             { namespace: "event", key: "ends_at" }
             { namespace: "event", key: "cancelled" }
+            { namespace: "event", key: "booking_closes_at" }
           ]
         ) {
           key
@@ -127,6 +128,7 @@ function toClubEvent(product: StorefrontProduct): ClubEvent | null {
     startsAt,
     endsAt,
     cancelled: fields.get('cancelled') === 'true',
+    bookingClosesAt: parseEventTime(fields.get('booking_closes_at')),
     soldOut: !product.availableForSale || variants.every((v) => !v.availableForSale),
     onlineStoreUrl: product.onlineStoreUrl,
     variants,

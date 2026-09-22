@@ -102,6 +102,7 @@ export default function ClubPage({ events, now, isSample, error }: Props) {
           event={event}
           past={false}
           wide={alone}
+          now={clock}
           onBook={setBooking}
           onNotify={(item) => openInterest(item.title, item.city)}
         />
@@ -200,6 +201,7 @@ export default function ClubPage({ events, now, isSample, error }: Props) {
                 event={event}
                 past
                 wide={false}
+                now={clock}
                 onBook={setBooking}
                 onNotify={(item) => openInterest(item.title, item.city)}
               />

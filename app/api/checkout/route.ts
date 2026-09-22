@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { SITE } from '@/lib/site'
 import { storefront } from '@/lib/shopify'
+import { parseEventTime } from '@/lib/events'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,6 +21,36 @@ const CART_CREATE = /* GraphQL */ `
     }
   }
 `
+
+const VARIANT_STATE = /* GraphQL */ `
+  query ClubVariantState($id: ID!) {
+    node(id: $id) {
+      ... on ProductVariant {
+        availableForSale
+        product {
+          title
+          metafields(
+            identifiers: [
+              { namespace: "event", key: "ends_at" }
+              { namespace: "event", key: "booking_closes_at" }
+              { namespace: "event", key: "cancelled" }
+            ]
+          ) {
+            key
+            value
+          }
+        }
+      }
+    }
+  }
+`
+
+type VariantState = {
+  node: {
+    availableForSale: boolean
+    product: { title: string; metafields: ({ key: string; value: string } | null)[] }
+  } | null
+}
 
 type CartCreateResult = {
   cartCreate: {
@@ -83,6 +114,38 @@ export async function POST(request: Request) {
   ].filter((attribute) => attribute.value.length > 0)
 
   try {
+    // The page is cached, so a stale tab can still post after a cutoff or a sell-out.
+    const state = await storefront<VariantState>(
+      VARIANT_STATE,
+      { id: variantId },
+      { cache: 'no-store' }
+    )
+    if (!state.node) return fail('That ticket is no longer available.')
+
+    const fields = new Map<string, string>()
+    for (const field of state.node.product.metafields) {
+      if (field?.value) fields.set(field.key, field.value)
+    }
+
+    if (fields.get('cancelled') === 'true') {
+      return fail('This event has been cancelled.')
+    }
+
+    const now = Math.floor(Date.now() / 1000)
+    const closesAt = parseEventTime(fields.get('booking_closes_at'))
+    if (closesAt !== null && now >= closesAt) {
+      return fail('Bookings for this event have closed.')
+    }
+
+    const endsAt = parseEventTime(fields.get('ends_at'))
+    if (endsAt !== null && now >= endsAt) {
+      return fail('This event has ended. Please choose another event.')
+    }
+
+    if (!state.node.availableForSale) {
+      return fail('This event is sold out.')
+    }
+
     const data = await storefront<CartCreateResult>(
       CART_CREATE,
       {

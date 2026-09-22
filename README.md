@@ -42,6 +42,7 @@ npm run shopify:setup          # add --check to report without creating
 | `event.starts_at` | `date_time` | `2026-10-12T19:00:00` |
 | `event.ends_at` | `date_time` | `2026-10-12T21:00:00` |
 | `event.cancelled` | `boolean` | `false` |
+| `event.booking_closes_at` | `date_time` | `2030-10-18T00:00:00` |
 
 The script creates them with Storefront access `PUBLIC_READ`. If you create them
 by hand in **Settings → Custom data → Products**, turn on *Storefront access* —
@@ -49,6 +50,11 @@ without it the API returns `null` and every event is skipped.
 
 Times without a timezone are read as IST. `ends_at` defaults to start + 2h.
 An event with no `starts_at` is not rendered.
+
+`booking_closes_at` is optional. Set it to stop sales before the event starts —
+the card switches to "Bookings closed" on its own at that moment, and
+`/api/checkout` re-checks it server-side so a stale tab can't book past it.
+Leave it empty and bookings run until the event ends.
 
 ### 2. One product per event
 

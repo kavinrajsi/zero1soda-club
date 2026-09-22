@@ -36,6 +36,7 @@ function sample(
     startsAt,
     endsAt: startsAt + 2 * 3600,
     cancelled: false,
+    bookingClosesAt: null,
     soldOut: Boolean(options.soldOut),
     onlineStoreUrl: null,
     variants: [

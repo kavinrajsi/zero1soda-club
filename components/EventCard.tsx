@@ -6,12 +6,15 @@ type Props = {
   event: ClubEvent
   past: boolean
   wide: boolean
+  /** Unix seconds, shared with the page so SSR and the client agree. */
+  now: number
   onBook: (event: ClubEvent) => void
   onNotify: (event: ClubEvent) => void
 }
 
-export default function EventCard({ event, past, wide, onBook, onNotify }: Props) {
-  const bookable = !past && !event.soldOut && !event.cancelled
+export default function EventCard({ event, past, wide, now, onBook, onNotify }: Props) {
+  const bookingClosed = event.bookingClosesAt !== null && now >= event.bookingClosesAt
+  const bookable = !past && !event.soldOut && !event.cancelled && !bookingClosed
   const image = event.imageUrl || '/images/event-placeholder.png'
 
   return (
@@ -57,6 +60,13 @@ export default function EventCard({ event, past, wide, onBook, onNotify }: Props
         {past ? (
           <>
             <span>Wish you were here?</span>
+            <button type="button" className="z1-pill z1-outline" onClick={() => onNotify(event)}>
+              Notify
+            </button>
+          </>
+        ) : bookingClosed ? (
+          <>
+            <span className="z1-sold-out">Bookings closed</span>
             <button type="button" className="z1-pill z1-outline" onClick={() => onNotify(event)}>
               Notify
             </button>

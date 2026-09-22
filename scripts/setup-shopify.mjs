@@ -77,6 +77,7 @@ const DEFINITIONS = [
   { key: 'starts_at', name: 'Event starts at', type: 'date_time' },
   { key: 'ends_at', name: 'Event ends at', type: 'date_time' },
   { key: 'cancelled', name: 'Event cancelled', type: 'boolean' },
+  { key: 'booking_closes_at', name: 'Event booking closes at', type: 'date_time' },
 ]
 
 function loadEnvFile(path) {
