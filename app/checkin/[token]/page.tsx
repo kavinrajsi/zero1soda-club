@@ -73,7 +73,11 @@ export default async function CheckinPage({ params }: Props) {
 
   const startsAt = parseEventTime(ticket.startsAt)
   const used = ticket.checkedInAt !== null
-  const state = !ticket.paid ? 'unpaid' : used ? 'used' : 'valid'
+  const refunded =
+    ticket.financialStatus === 'REFUNDED' || ticket.financialStatus === 'PARTIALLY_REFUNDED'
+  // A refund is not the same as never paying, and staff need to tell them apart.
+  const refundedAt = ticket.payments.find((payment) => payment.kind === 'REFUND')?.processedAt
+  const state = refunded ? 'refunded' : !ticket.paid ? 'unpaid' : used ? 'used' : 'valid'
 
   return (
     <div className={`z1 z1-checkin z1-checkin--${state}`}>
@@ -81,6 +85,7 @@ export default async function CheckinPage({ params }: Props) {
         <h1>
           {state === 'valid' && 'VALID'}
           {state === 'used' && 'ALREADY USED'}
+          {state === 'refunded' && 'REFUNDED'}
           {state === 'unpaid' && 'NOT PAID'}
         </h1>
 
@@ -198,6 +203,13 @@ export default async function CheckinPage({ params }: Props) {
         )}
 
         {state === 'unpaid' && <p>Payment is not complete on this order. Do not admit.</p>}
+
+        {state === 'refunded' && (
+          <p>
+            This booking was refunded
+            {refundedAt ? ` on ${formatStamp(refundedAt)}` : ''}. Do not admit.
+          </p>
+        )}
       </div>
     </div>
   )

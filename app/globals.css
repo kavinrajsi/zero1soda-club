@@ -234,10 +234,12 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 .z1-checkin--used h1 {
   color: #9c6500;
 }
+.z1-checkin--refunded .z1-checkin-card,
 .z1-checkin--unpaid .z1-checkin-card,
 .z1-checkin--invalid .z1-checkin-card {
   border-top: 10px solid #9c241a;
 }
+.z1-checkin--refunded h1,
 .z1-checkin--unpaid h1,
 .z1-checkin--invalid h1 {
   color: #9c241a;
