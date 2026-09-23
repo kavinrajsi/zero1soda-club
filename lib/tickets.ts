@@ -12,6 +12,17 @@ export type TicketRef = {
   total: number
 }
 
+export type TicketPayment = {
+  id: string
+  kind: string
+  status: string
+  gateway: string
+  paymentId: string | null
+  processedAt: string | null
+  amount: string
+  currencyCode: string
+}
+
 export type TicketDetails = TicketRef & {
   orderName: string
   event: string
@@ -23,6 +34,9 @@ export type TicketDetails = TicketRef & {
   quantity: number
   paid: boolean
   checkedInAt: string | null
+  financialStatus: string
+  note: string | null
+  payments: TicketPayment[]
 }
 
 function secret(): string {
@@ -78,7 +92,23 @@ const ORDER_QUERY = /* GraphQL */ `
       id
       name
       displayFinancialStatus
+      note
       email
+      transactions(first: 10) {
+        id
+        kind
+        status
+        gateway
+        formattedGateway
+        paymentId
+        processedAt
+        amountSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+      }
       customer {
         displayName
       }
@@ -121,7 +151,18 @@ type OrderResult = {
     id: string
     name: string
     displayFinancialStatus: string | null
+    note: string | null
     email: string | null
+    transactions: {
+      id: string
+      kind: string
+      status: string
+      gateway: string
+      formattedGateway: string | null
+      paymentId: string | null
+      processedAt: string | null
+      amountSet: { shopMoney: { amount: string; currencyCode: string } } | null
+    }[]
     customer: { displayName: string | null } | null
     ticketKey: { value: string } | null
     checkedIn: { value: string } | null
@@ -188,6 +229,18 @@ export async function loadTicket(ref: TicketRef): Promise<TicketDetails | null> 
     quantity: line.quantity,
     paid: order.displayFinancialStatus === 'PAID',
     checkedInAt: checkedInMap(order.checkedIn?.value)[ticketSlotKey(ref)] ?? null,
+    financialStatus: order.displayFinancialStatus ?? 'UNKNOWN',
+    note: order.note,
+    payments: order.transactions.map((transaction) => ({
+      id: transaction.id.split('/').pop() || transaction.id,
+      kind: transaction.kind,
+      status: transaction.status,
+      gateway: transaction.formattedGateway || transaction.gateway,
+      paymentId: transaction.paymentId,
+      processedAt: transaction.processedAt,
+      amount: transaction.amountSet?.shopMoney.amount ?? '0',
+      currencyCode: transaction.amountSet?.shopMoney.currencyCode ?? 'INR',
+    })),
   }
 }
 

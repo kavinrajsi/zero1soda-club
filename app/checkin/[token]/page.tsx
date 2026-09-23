@@ -15,6 +15,17 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ token: string }> }
 
+function formatMoney(amount: string, currencyCode: string) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: currencyCode,
+  }).format(Number(amount))
+}
+
+function titleCase(value: string) {
+  return value.charAt(0) + value.slice(1).toLowerCase()
+}
+
 function formatStamp(iso: string) {
   return new Intl.DateTimeFormat('en-IN', {
     timeZone: 'Asia/Kolkata',
@@ -103,6 +114,79 @@ export default async function CheckinPage({ params }: Props) {
             </div>
           )}
         </dl>
+
+        <details className="z1-checkin-more">
+          <summary>
+            More
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="20px"
+              viewBox="0 -960 960 960"
+              width="20px"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z" />
+            </svg>
+          </summary>
+
+          <dl className="z1-checkin-meta">
+            <div>
+              <dt>Payment status</dt>
+              <dd>{titleCase(ticket.financialStatus.replace(/_/g, ' '))}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{ticket.buyerEmail || '—'}</dd>
+            </div>
+          </dl>
+
+          {ticket.payments.length === 0 ? (
+            <p className="z1-checkin-empty">No payments recorded on this order.</p>
+          ) : (
+            ticket.payments.map((payment) => (
+              <dl className="z1-checkin-meta z1-checkin-payment" key={payment.id}>
+                <div>
+                  <dt>Amount</dt>
+                  <dd>{formatMoney(payment.amount, payment.currencyCode)}</dd>
+                </div>
+                <div>
+                  <dt>Gateway</dt>
+                  <dd>{payment.gateway}</dd>
+                </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd>{titleCase(payment.status)}</dd>
+                </div>
+                <div>
+                  <dt>Type</dt>
+                  <dd>{titleCase(payment.kind)}</dd>
+                </div>
+                {payment.paymentId && (
+                  <div>
+                    <dt>Payment ID</dt>
+                    <dd className="z1-checkin-id">{payment.paymentId}</dd>
+                  </div>
+                )}
+                {payment.processedAt && (
+                  <div>
+                    <dt>Created</dt>
+                    <dd>{formatStamp(payment.processedAt)}</dd>
+                  </div>
+                )}
+              </dl>
+            ))
+          )}
+
+          {ticket.note && (
+            <dl className="z1-checkin-meta">
+              <div>
+                <dt>Note</dt>
+                <dd>{ticket.note}</dd>
+              </div>
+            </dl>
+          )}
+        </details>
 
         {state === 'valid' && (
           <form action={checkIn}>

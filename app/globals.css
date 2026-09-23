@@ -270,3 +270,60 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 .z1-checkin .z1-submit {
   margin-top: 18px;
 }
+
+/* "More" disclosure on the check-in card: payment detail staff rarely need. */
+.z1-checkin-more {
+  margin-top: 20px;
+  border-top: 1px solid #e5e1df;
+  text-align: left;
+}
+.z1-checkin-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--z1-ink, #1c1212);
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+}
+.z1-checkin-more > summary::-webkit-details-marker {
+  display: none;
+}
+.z1-checkin-more > summary svg {
+  transition: transform 0.15s;
+}
+.z1-checkin-more[open] > summary svg {
+  transform: rotate(180deg);
+}
+.z1-checkin-more .z1-checkin-meta {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 14px;
+}
+.z1-checkin-payment {
+  padding: 14px;
+  background: #f8f6f3;
+  border-radius: 12px;
+}
+.z1-checkin-payment + .z1-checkin-payment {
+  margin-top: 10px;
+}
+.z1-checkin-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+.z1-checkin-empty {
+  margin: 14px 0 0 !important;
+  font-size: 12px;
+  color: #6c6360;
+}
+@media (prefers-reduced-motion: reduce) {
+  .z1-checkin-more > summary svg {
+    transition: none;
+  }
+}
