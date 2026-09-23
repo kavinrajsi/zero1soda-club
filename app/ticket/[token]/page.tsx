@@ -83,7 +83,7 @@ export default async function TicketPage({ params }: Props) {
               <dt>Event</dt>
               <dd>{ticket.event}</dd>
             </div>
-            <div className="z1-receipt-full">
+            <div>
               <dt>Date &amp; time</dt>
               <dd>
                 {startsAt !== null
@@ -91,9 +91,9 @@ export default async function TicketPage({ params }: Props) {
                   : 'To be announced'}
               </dd>
             </div>
-            <div className="z1-receipt-full">
+            <div className="z1-receipt-right">
               <dt>Venue</dt>
-              <dd>{ticket.venue ? `${ticket.venue}, ${ticket.city}` : ticket.city}</dd>
+              <dd>{ticket.venue || ticket.city}</dd>
             </div>
           </dl>
 
