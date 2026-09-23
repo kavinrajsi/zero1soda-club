@@ -509,3 +509,23 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 .z1-checkin--locked .z1-checkin-card {
   border-top: 10px solid var(--z1-ink, #1c1212);
 }
+
+/* Per-field validation messages in the booking and interest dialogs. */
+.z1 .z1-field--invalid input,
+.z1 .z1-field--invalid select {
+  border-color: #9c241a;
+}
+.z1 .z1-field-error {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #9c241a;
+}
+.z1 .z1-field-error--row {
+  margin: 8px 0 0 !important;
+}
+.z1 .z1-consent--invalid input {
+  outline: 2px solid #9c241a;
+  outline-offset: 2px;
+}

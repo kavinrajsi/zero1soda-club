@@ -4,6 +4,17 @@ import { useEffect, useRef, useState } from 'react'
 import type { ClubEvent } from '@/lib/types'
 import { formatEventDate, formatEventTime, formatMoney } from '@/lib/format'
 import { SITE } from '@/lib/site'
+import {
+  collectErrors,
+  FIELD_LIMITS,
+  type FieldErrors,
+  validateConsent,
+  validateEmail,
+  validateName,
+  validatePhone,
+  validateQuantity,
+  validateTicketType,
+} from '@/lib/validation'
 
 type Props = {
   event: ClubEvent | null
@@ -19,6 +30,7 @@ export default function BookingDialog({ event, onClose }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
 
   useEffect(() => {
     if (!event) return
@@ -27,6 +39,7 @@ export default function BookingDialog({ event, onClose }: Props) {
     setQuantity(1)
     setError('')
     setStatus('')
+    setFieldErrors({})
     setBusy(false)
     dialog.current?.showModal()
   }, [event])
@@ -43,14 +56,41 @@ export default function BookingDialog({ event, onClose }: Props) {
     dialog.current?.close()
   }
 
+  /** Clears a field's message the moment it becomes valid again. */
+  function setFieldError(field: string, message: string | null) {
+    setFieldErrors((current) => {
+      const next = { ...current }
+      if (message) next[field] = message
+      else delete next[field]
+      return next
+    })
+  }
+
   async function submit(formEvent: React.FormEvent<HTMLFormElement>) {
     formEvent.preventDefault()
     if (busy || !event || !variant) return
 
     const form = formEvent.currentTarget
-    if (!form.reportValidity()) return
-
     const data = new FormData(form)
+    const name = String(data.get('name') || '')
+    const email = String(data.get('email') || '')
+    const phone = String(data.get('phone') || '')
+
+    const problems = collectErrors({
+      name: validateName(name),
+      phone: validatePhone(phone),
+      email: validateEmail(email),
+      ticketType: validateTicketType(variantId, Boolean(variant?.availableForSale)),
+      quantity: validateQuantity(quantity, maxQuantity),
+      consent: validateConsent(data.get('consent') === 'Yes'),
+    })
+
+    setFieldErrors(problems)
+    if (Object.keys(problems).length > 0) {
+      setError('')
+      return
+    }
+
     setBusy(true)
     setError('')
     setStatus('Reserving your tickets…')
@@ -73,9 +113,9 @@ export default function BookingDialog({ event, onClose }: Props) {
             startsAt: event.startsAt,
           },
           booker: {
-            name: String(data.get('name') || '').trim(),
-            email: String(data.get('email') || '').trim(),
-            phone: String(data.get('phone') || '').trim(),
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
           },
         }),
       })
@@ -109,28 +149,67 @@ export default function BookingDialog({ event, onClose }: Props) {
         dangerouslySetInnerHTML={{ __html: event.descriptionHtml }}
       />
 
-      <form onSubmit={submit} noValidate={false}>
+      <form onSubmit={submit} noValidate>
         <div className="z1-form-grid z1-booker-fields">
-          <label>
+          <label className={fieldErrors.name ? 'z1-field z1-field--invalid' : 'z1-field'}>
             Name
-            <input name="name" autoComplete="name" required maxLength={120} disabled={busy} />
+            <input
+              name="name"
+              autoComplete="name"
+              required
+              maxLength={FIELD_LIMITS.name}
+              disabled={busy}
+              aria-invalid={Boolean(fieldErrors.name)}
+              onBlur={(event) => setFieldError('name', validateName(event.target.value))}
+            />
+            {fieldErrors.name && <span className="z1-field-error">{fieldErrors.name}</span>}
           </label>
-          <label>
+          <label className={fieldErrors.phone ? 'z1-field z1-field--invalid' : 'z1-field'}>
             Contact number
-            <input type="tel" name="phone" autoComplete="tel" required maxLength={30} disabled={busy} />
+            <input
+              type="tel"
+              name="phone"
+              inputMode="numeric"
+              autoComplete="tel"
+              required
+              maxLength={FIELD_LIMITS.phone}
+              disabled={busy}
+              aria-invalid={Boolean(fieldErrors.phone)}
+              onBlur={(event) => setFieldError('phone', validatePhone(event.target.value))}
+            />
+            {fieldErrors.phone && <span className="z1-field-error">{fieldErrors.phone}</span>}
           </label>
-          <label className="z1-full">
+          <label
+            className={`z1-full ${fieldErrors.email ? 'z1-field z1-field--invalid' : 'z1-field'}`}
+          >
             Email
-            <input type="email" name="email" autoComplete="email" required maxLength={254} disabled={busy} />
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              required
+              maxLength={FIELD_LIMITS.email}
+              disabled={busy}
+              aria-invalid={Boolean(fieldErrors.email)}
+              onBlur={(event) => setFieldError('email', validateEmail(event.target.value))}
+            />
+            {fieldErrors.email && <span className="z1-field-error">{fieldErrors.email}</span>}
           </label>
           {event.variants.length > 1 && (
-            <label className="z1-full">
+            <label
+              className={`z1-full ${
+                fieldErrors.ticketType ? 'z1-field z1-field--invalid' : 'z1-field'
+              }`}
+            >
               Ticket type
               <select
                 value={variantId}
-                onChange={(e) => setVariantId(e.target.value)}
+                onChange={(e) => {
+                  setVariantId(e.target.value)
+                  setFieldError('ticketType', null)
+                }}
                 disabled={busy}
-                required
+                aria-invalid={Boolean(fieldErrors.ticketType)}
               >
                 {event.variants.map((item) => (
                   <option key={item.id} value={item.id} disabled={!item.availableForSale}>
@@ -139,6 +218,9 @@ export default function BookingDialog({ event, onClose }: Props) {
                   </option>
                 ))}
               </select>
+              {fieldErrors.ticketType && (
+                <span className="z1-field-error">{fieldErrors.ticketType}</span>
+              )}
             </label>
           )}
         </div>
@@ -177,6 +259,10 @@ export default function BookingDialog({ event, onClose }: Props) {
           </div>
         </div>
 
+        {fieldErrors.quantity && (
+          <p className="z1-field-error z1-field-error--row">{fieldErrors.quantity}</p>
+        )}
+
         <p className="z1-help">
           Up to {maxQuantity} ticket{maxQuantity === 1 ? '' : 's'} per checkout.
           {variant?.quantityAvailable !== null && variant?.quantityAvailable !== undefined
@@ -184,9 +270,25 @@ export default function BookingDialog({ event, onClose }: Props) {
             : ''}
         </p>
 
-        <label className="z1-consent">
-          <input type="checkbox" name="consent" value="Yes" required disabled={busy} />
-          <span>I agree to be contacted about this booking and future Zero1 events.</span>
+        <label
+          className={`z1-consent${fieldErrors.consent ? ' z1-consent--invalid' : ''}`}
+        >
+          <input
+            type="checkbox"
+            name="consent"
+            value="Yes"
+            disabled={busy}
+            aria-invalid={Boolean(fieldErrors.consent)}
+            onChange={(event) =>
+              setFieldError('consent', validateConsent(event.target.checked))
+            }
+          />
+          <span>
+            I agree to be contacted about this booking and future Zero1 events.
+            {fieldErrors.consent && (
+              <span className="z1-field-error">{fieldErrors.consent}</span>
+            )}
+          </span>
         </label>
 
         <div className="z1-subtotal">

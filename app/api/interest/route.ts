@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server'
 import { admin, isAdminConfigured } from '@/lib/shopify'
+import {
+  normalisePhone,
+  validateCity,
+  validateEmail,
+  validateName,
+  validatePhone,
+} from '@/lib/validation'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,8 +51,6 @@ const UPDATE_CUSTOMER = /* GraphQL */ `
   }
 `
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
 }
@@ -75,14 +80,16 @@ export async function POST(request: Request) {
   const city = text(body.city, 100)
   const eventName = text(body.event, 200) || 'Club Zero1'
 
-  if (!name) return fail('Please add your name.')
-  if (!EMAIL.test(email)) return fail('Please add a valid email address.')
-  if (!city) return fail('Please choose a city.')
+  const invalid =
+    validateName(name) || validateEmail(email) || validatePhone(phone) || validateCity(city)
+  if (invalid) return fail(invalid)
+
+  const contactNumber = normalisePhone(phone) ?? phone
 
   const [firstName, ...rest] = name.split(/\s+/)
   const lastName = rest.join(' ')
   const tags = ['club-zero1', `club-city:${city.toLowerCase()}`]
-  const note = `Club Zero1 interest — ${eventName} (${city}). Phone: ${phone || 'not given'}.`
+  const note = `Club Zero1 interest — ${eventName} (${city}). Phone: ${contactNumber}.`
   // Deliberately no emailMarketingConsent: the checkbox covers event contact, not
   // the store's marketing list, and writing it would resubscribe someone who
   // had previously opted out. The `club-zero1` tag is what segments this list.
@@ -118,7 +125,7 @@ export async function POST(request: Request) {
         email,
         firstName,
         lastName: lastName || undefined,
-        phone: phone || undefined,
+        phone: contactNumber,
         tags,
         note,
       },

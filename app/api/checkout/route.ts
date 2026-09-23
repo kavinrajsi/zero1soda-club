@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { SITE } from '@/lib/site'
 import { storefront } from '@/lib/shopify'
 import { parseEventTime } from '@/lib/events'
+import { normalisePhone, validateEmail, validateName, validatePhone } from '@/lib/validation'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -67,7 +68,6 @@ type Body = {
 }
 
 const VARIANT_GID = /^gid:\/\/shopify\/ProductVariant\/\d+$/
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : ''
@@ -96,9 +96,14 @@ export async function POST(request: Request) {
   const name = text(body.booker?.name, 120)
   const email = text(body.booker?.email, 254)
   const phone = text(body.booker?.phone, 30)
-  if (!name) return fail('Please add the name for the booking.')
-  if (!EMAIL.test(email)) return fail('Please add a valid email address.')
-  if (!phone) return fail('Please add a contact number.')
+
+  // Same rules the dialog runs, so a direct POST cannot slip past them.
+  const invalid = validateName(name) || validateEmail(email) || validatePhone(phone)
+  if (invalid) return fail(invalid)
+
+  // Store one canonical form, so the door can search a number that was typed
+  // with a +91, spaces or a leading zero.
+  const contactNumber = normalisePhone(phone) ?? phone
 
   const eventTitle = text(body.event?.title, 200)
   const eventCity = text(body.event?.city, 100)
@@ -110,7 +115,7 @@ export async function POST(request: Request) {
     { key: 'Venue', value: eventVenue },
     { key: 'Booking name', value: name },
     { key: 'Booking email', value: email },
-    { key: 'Booking phone', value: phone },
+    { key: 'Booking phone', value: contactNumber },
   ].filter((attribute) => attribute.value.length > 0)
 
   try {
