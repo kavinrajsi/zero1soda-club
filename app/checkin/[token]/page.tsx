@@ -15,6 +15,27 @@ export const metadata: Metadata = {
 
 type Props = { params: Promise<{ token: string }> }
 
+/**
+ * Shopify's financial statuses, in door language. Anything other than PAID
+ * blocks entry, but staff need to know which one so they can explain it.
+ */
+const PAYMENT_STATES: Record<string, { heading: string; message: string }> = {
+  REFUNDED: { heading: 'REFUNDED', message: 'This booking was refunded' },
+  PARTIALLY_REFUNDED: {
+    heading: 'PARTLY REFUNDED',
+    message: 'Part of this booking was refunded',
+  },
+  PENDING: { heading: 'PAYMENT PENDING', message: 'Payment has not cleared yet' },
+  AUTHORIZED: { heading: 'NOT CAPTURED', message: 'Payment was authorised but never captured' },
+  PARTIALLY_PAID: { heading: 'PARTLY PAID', message: 'Only part of this booking was paid' },
+  VOIDED: { heading: 'VOIDED', message: 'This payment was voided' },
+  EXPIRED: { heading: 'EXPIRED', message: 'This payment expired before it was captured' },
+}
+
+function paymentState(status: string) {
+  return PAYMENT_STATES[status] ?? { heading: 'NOT PAID', message: 'This booking is not paid' }
+}
+
 function formatMoney(amount: string, currencyCode: string) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -73,11 +94,10 @@ export default async function CheckinPage({ params }: Props) {
 
   const startsAt = parseEventTime(ticket.startsAt)
   const used = ticket.checkedInAt !== null
-  const refunded =
-    ticket.financialStatus === 'REFUNDED' || ticket.financialStatus === 'PARTIALLY_REFUNDED'
-  // A refund is not the same as never paying, and staff need to tell them apart.
-  const refundedAt = ticket.payments.find((payment) => payment.kind === 'REFUND')?.processedAt
-  const state = refunded ? 'refunded' : !ticket.paid ? 'unpaid' : used ? 'used' : 'valid'
+  const payment = paymentState(ticket.financialStatus)
+  // Date the money moved back, when there is one, so staff can cite it.
+  const refundedAt = ticket.payments.find((item) => item.kind === 'REFUND')?.processedAt
+  const state = !ticket.paid ? 'unpaid' : used ? 'used' : 'valid'
 
   return (
     <div className={`z1 z1-checkin z1-checkin--${state}`}>
@@ -85,8 +105,7 @@ export default async function CheckinPage({ params }: Props) {
         <h1>
           {state === 'valid' && 'VALID'}
           {state === 'used' && 'ALREADY USED'}
-          {state === 'refunded' && 'REFUNDED'}
-          {state === 'unpaid' && 'NOT PAID'}
+          {state === 'unpaid' && payment.heading}
         </h1>
 
         <p className="z1-checkin-event">{ticket.event}</p>
@@ -202,11 +221,9 @@ export default async function CheckinPage({ params }: Props) {
           </form>
         )}
 
-        {state === 'unpaid' && <p>Payment is not complete on this order. Do not admit.</p>}
-
-        {state === 'refunded' && (
+        {state === 'unpaid' && (
           <p>
-            This booking was refunded
+            {payment.message}
             {refundedAt ? ` on ${formatStamp(refundedAt)}` : ''}. Do not admit.
           </p>
         )}
