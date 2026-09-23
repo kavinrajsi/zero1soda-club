@@ -146,8 +146,7 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
   margin: 0 0 8px;
 }
 
-/* Ticket and door check-in screens. Both are phone-first, one card, no chrome. */
-.z1-ticket-page,
+/* Door check-in screen. Phone-first, one card, no chrome. */
 .z1-checkin {
   min-height: 100dvh;
   display: grid;
@@ -155,7 +154,6 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
   padding: 24px 16px;
   background: #f8f6f3;
 }
-.z1-ticket,
 .z1-checkin-card {
   width: min(420px, 100%);
   background: #fff;
@@ -164,26 +162,6 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
   box-shadow: 0 20px 60px rgba(28, 18, 18, 0.12);
   text-align: center;
 }
-.z1-ticket h1 {
-  font-size: clamp(30px, 8vw, 42px);
-  margin: 10px 0 12px;
-}
-.z1-ticket-where,
-.z1-ticket-when {
-  font-size: 13px;
-  margin: 0 0 4px !important;
-}
-.z1-ticket-qr {
-  margin: 26px auto 20px;
-  width: 320px;
-  max-width: 100%;
-}
-.z1-ticket-qr img {
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-}
-.z1-ticket-meta,
 .z1-checkin-meta {
   display: grid;
   gap: 10px;
@@ -193,27 +171,190 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
   text-align: left;
   font-size: 13px;
 }
-.z1-ticket-meta > div,
 .z1-checkin-meta > div {
   display: flex;
   justify-content: space-between;
   gap: 16px;
 }
-.z1-ticket-meta dt,
 .z1-checkin-meta dt {
   color: #6c6360;
 }
-.z1-ticket-meta dd,
 .z1-checkin-meta dd {
   margin: 0;
   font-weight: 600;
 }
-.z1-ticket-note {
-  margin-top: 20px !important;
-  font-size: 11px;
+
+/* Buyer's ticket, shaped like a torn-off receipt stub. */
+.z1-ticket-page {
+  --z1-paper: #eef1f6;
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: 32px 16px 48px;
+  background: var(--z1-paper);
+}
+.z1-receipt {
+  position: relative;
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 24px 70px rgba(28, 18, 18, 0.1);
+  /* Scalloped tear-off along the bottom, in the page colour. */
+  padding-bottom: 26px;
+  -webkit-mask:
+    radial-gradient(circle 13px at 13px 100%, transparent 98%, #000) repeat-x bottom left / 52px 26px,
+    linear-gradient(#000 0 0) top left / 100% calc(100% - 26px) no-repeat;
+  mask:
+    radial-gradient(circle 13px at 13px 100%, transparent 98%, #000) repeat-x bottom left / 52px 26px,
+    linear-gradient(#000 0 0) top left / 100% calc(100% - 26px) no-repeat;
+}
+.z1-receipt-head {
+  padding: 38px 30px 30px;
+  text-align: center;
+}
+.z1-receipt-mark {
+  font-size: 40px;
+  line-height: 1;
+  margin: 0 0 14px !important;
+}
+.z1-receipt-head h1 {
+  font-size: clamp(34px, 9vw, 44px);
+  margin: 0 0 8px;
+}
+.z1-receipt-head > p:last-child {
+  margin: 0 auto !important;
+  max-width: 24ch;
+  font-size: 14px;
   color: #6c6360;
 }
-.z1-ticket-note a {
+
+/* Perforation: dashed rule with a notch bitten out of each edge. */
+.z1-receipt-perforation {
+  position: relative;
+  height: 0;
+  border-top: 2px dashed #d8dde5;
+  margin: 0 34px;
+}
+.z1-receipt-perforation::before,
+.z1-receipt-perforation::after {
+  content: '';
+  position: absolute;
+  top: -19px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--z1-paper);
+}
+.z1-receipt-perforation::before {
+  left: -52px;
+}
+.z1-receipt-perforation::after {
+  right: -52px;
+}
+
+.z1-receipt-body {
+  padding: 28px 30px 4px;
+}
+.z1-receipt-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px 16px;
+  margin: 0;
+}
+.z1-receipt-full {
+  grid-column: 1 / -1;
+}
+.z1-receipt-right {
+  text-align: right;
+}
+.z1-receipt-grid dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b9199;
+  margin-bottom: 5px;
+}
+.z1-receipt-grid dd {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--z1-ink, #1c1212);
+}
+
+.z1-receipt-payer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+  padding: 14px 16px;
+  background: #f4f6f9;
+  border-radius: 14px;
+}
+.z1-receipt-avatar {
+  flex: 0 0 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--z1-red, #ef250c);
+  color: #fff;
+  font-weight: 700;
+}
+.z1-receipt-payer strong {
+  display: block;
+  font-size: 15px;
+}
+.z1-receipt-payer small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6c6360;
+}
+.z1-receipt-void,
+.z1-receipt-used {
+  margin: 18px 0 0 !important;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+.z1-receipt-void {
+  background: #fdecea;
+  color: #9c241a;
+}
+.z1-receipt-used {
+  background: #fdf3e0;
+  color: #9c6500;
+}
+
+.z1-receipt-stub {
+  padding: 26px 30px 20px;
+  text-align: center;
+  border-top: 2px dashed #d8dde5;
+  margin-top: 26px;
+}
+.z1-receipt-stub img {
+  width: min(240px, 68%);
+  height: auto;
+  margin: 0 auto;
+}
+.z1-receipt-stub p {
+  margin: 12px 0 0 !important;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b9199;
+}
+.z1-receipt-footer {
+  margin: 0 !important;
+  font-size: 12px;
+  color: #6c6360;
+  text-align: center;
+}
+.z1-receipt-footer a {
   text-decoration: underline;
 }
 

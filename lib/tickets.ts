@@ -36,6 +36,10 @@ export type TicketDetails = TicketRef & {
   checkedInAt: string | null
   financialStatus: string
   note: string | null
+  orderedAt: string | null
+  /** Price of one ticket on this line, not the whole line. */
+  unitPrice: string
+  currencyCode: string
   payments: TicketPayment[]
 }
 
@@ -92,6 +96,7 @@ const ORDER_QUERY = /* GraphQL */ `
       id
       name
       displayFinancialStatus
+      processedAt
       note
       email
       transactions(first: 10) {
@@ -123,6 +128,12 @@ const ORDER_QUERY = /* GraphQL */ `
           id
           title
           quantity
+          originalUnitPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
           customAttributes {
             key
             value
@@ -151,6 +162,7 @@ type OrderResult = {
     id: string
     name: string
     displayFinancialStatus: string | null
+    processedAt: string | null
     note: string | null
     email: string | null
     transactions: {
@@ -171,6 +183,7 @@ type OrderResult = {
         id: string
         title: string
         quantity: number
+        originalUnitPriceSet: { shopMoney: { amount: string; currencyCode: string } } | null
         customAttributes: { key: string; value: string | null }[]
         product: {
           id: string
@@ -231,6 +244,9 @@ export async function loadTicket(ref: TicketRef): Promise<TicketDetails | null> 
     checkedInAt: checkedInMap(order.checkedIn?.value)[ticketSlotKey(ref)] ?? null,
     financialStatus: order.displayFinancialStatus ?? 'UNKNOWN',
     note: order.note,
+    orderedAt: order.processedAt,
+    unitPrice: line.originalUnitPriceSet?.shopMoney.amount ?? '0',
+    currencyCode: line.originalUnitPriceSet?.shopMoney.currencyCode ?? 'INR',
     payments: order.transactions.map((transaction) => ({
       id: transaction.id.split('/').pop() || transaction.id,
       kind: transaction.kind,
