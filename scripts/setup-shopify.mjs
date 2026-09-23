@@ -71,6 +71,26 @@ async function adminToken() {
 
 const token = await adminToken()
 
+/**
+ * Order metafields need definitions too, and not for tidiness: Liquid only
+ * exposes metafields that have one, so without these the order email reads
+ * order.metafields.club.ticket_key as blank and renders no tickets at all.
+ */
+const ORDER_DEFINITIONS = [
+  {
+    key: 'ticket_key',
+    name: 'Club ticket key',
+    type: 'single_line_text_field',
+    description: 'Random per-order key that lets the order email build ticket QR URLs it cannot sign.',
+  },
+  {
+    key: 'checked_in',
+    name: 'Club check-ins',
+    type: 'json',
+    description: 'Map of lineItemId:index to the time that ticket was scanned at the door.',
+  },
+]
+
 const DEFINITIONS = [
   { key: 'city', name: 'Event city', type: 'single_line_text_field' },
   { key: 'venue', name: 'Event venue', type: 'single_line_text_field' },
@@ -106,14 +126,20 @@ async function graphql(query, variables = {}) {
   return payload.data
 }
 
-async function existingDefinitions() {
+async function existingDefinitions(ownerType = 'PRODUCT', namespace = 'event') {
   const data = await graphql(
-    `query { metafieldDefinitions(first: 50, ownerType: PRODUCT, namespace: "event") { nodes { key name type { name } access { storefront } } } }`
+    `query Defs($ownerType: MetafieldOwnerType!, $namespace: String!) {
+      metafieldDefinitions(first: 50, ownerType: $ownerType, namespace: $namespace) {
+        nodes { key name type { name } access { storefront } }
+      }
+    }`,
+    { ownerType, namespace }
   )
   return new Map(data.metafieldDefinitions.nodes.map((node) => [node.key, node]))
 }
 
-async function createDefinition(definition) {
+async function createDefinition(definition, options = {}) {
+  const { namespace = 'event', ownerType = 'PRODUCT', storefront = 'PUBLIC_READ' } = options
   const data = await graphql(
     `mutation Create($input: MetafieldDefinitionInput!) {
       metafieldDefinitionCreate(definition: $input) {
@@ -123,13 +149,15 @@ async function createDefinition(definition) {
     }`,
     {
       input: {
-        namespace: 'event',
+        namespace,
         key: definition.key,
         name: definition.name,
+        description: definition.description,
         type: definition.type,
-        ownerType: 'PRODUCT',
+        ownerType,
         pin: true,
-        access: { storefront: 'PUBLIC_READ' },
+        // Order metafields reject an access block; products need storefront read.
+        ...(storefront ? { access: { storefront } } : {}),
       },
     }
   )
@@ -163,6 +191,21 @@ for (const definition of DEFINITIONS) {
   }
   await createDefinition(definition)
   console.log(`  created event.${definition.key} (${definition.type})`)
+}
+
+const existingOrderDefs = await existingDefinitions('ORDER', 'club')
+
+for (const definition of ORDER_DEFINITIONS) {
+  if (existingOrderDefs.get(definition.key)) {
+    console.log(`  ok   club.${definition.key} (${definition.type})`)
+    continue
+  }
+  if (CHECK_ONLY) {
+    console.log(`  MISSING club.${definition.key} (${definition.type}) — order email needs this`)
+    continue
+  }
+  await createDefinition(definition, { namespace: 'club', ownerType: 'ORDER', storefront: null })
+  console.log(`  created club.${definition.key} (${definition.type})`)
 }
 
 const { type, products } = await countEventProducts()

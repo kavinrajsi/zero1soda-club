@@ -118,6 +118,11 @@ its own URLs. Instead each order gets one unguessable key, and the QR endpoint
 swaps it for a signed token. Without it, guessing an order id would mint a
 working ticket.
 
+**The key needs a metafield definition to exist.** Liquid only exposes metafields
+that have one, so without `club.ticket_key` defined on orders the email reads it
+as blank and renders no tickets — no error, just a missing block. `npm run
+shopify:setup` creates it along with `club.checked_in`.
+
 Why the passcode: the buyer has the QR, so they can open the check-in URL too.
 Until a device posts `CHECKIN_PASSCODE`, the page shows nothing about the ticket.
 The cookie lasts 12 hours, one shift.
