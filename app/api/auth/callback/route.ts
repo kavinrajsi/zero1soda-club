@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   customerIdFromClaims,
   exchangeCode,
+  fetchCustomerId,
   PKCE_COOKIE,
   readIdToken,
 } from '@/lib/auth/customer-account'
@@ -40,17 +41,30 @@ export async function GET(request: Request) {
   if (pkce.state !== state) return fail(request, 'state')
 
   try {
+    const requestUrl = new URL(request.url)
     const tokens = await exchangeCode({
       code,
       redirectUri: new URL('/api/auth/callback', request.url).toString(),
       verifier: pkce.verifier,
+      origin: requestUrl.origin,
     })
 
     const claims = readIdToken(tokens.id_token)
     if (claims.nonce && claims.nonce !== pkce.nonce) return fail(request, 'nonce')
 
-    const customerId = customerIdFromClaims(claims)
-    if (!customerId) return fail(request, 'identity')
+    // Ask the API first; fall back to the token claims if it says nothing.
+    let customerId: string | null = null
+    try {
+      customerId = await fetchCustomerId(tokens.access_token)
+    } catch (lookupError) {
+      console.error('[club-zero1] customer lookup failed', lookupError)
+    }
+    customerId = customerId ?? customerIdFromClaims(claims)
+
+    if (!customerId) {
+      console.error('[club-zero1] no customer id; id_token claims:', Object.keys(claims).join(', '))
+      return fail(request, 'identity')
+    }
 
     const staff = await identifyStaff(customerId)
     // A real customer with no staff tag is not an error, just not staff.

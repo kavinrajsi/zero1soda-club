@@ -70,6 +70,8 @@ export async function exchangeCode(options: {
   code: string
   redirectUri: string
   verifier: string
+  /** Must match a registered JavaScript origin; Shopify requires it here. */
+  origin: string
 }): Promise<TokenResponse> {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -81,16 +83,35 @@ export async function exchangeCode(options: {
 
   const response = await fetch(`${base()}/oauth/token`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      // Public clients are identified by origin rather than a secret.
+      Origin: options.origin,
+    },
     body,
     cache: 'no-store',
   })
 
+  const raw = await response.text()
   if (!response.ok) {
-    throw new Error(`Token exchange failed: ${response.status} ${await response.text()}`)
+    throw new Error(`Token exchange failed: ${response.status} ${raw.slice(0, 300)}`)
   }
 
-  return (await response.json()) as TokenResponse
+  let payload: Partial<TokenResponse>
+  try {
+    payload = JSON.parse(raw) as Partial<TokenResponse>
+  } catch {
+    throw new Error(`Token endpoint returned non-JSON: ${raw.slice(0, 200)}`)
+  }
+
+  // Naming the missing field beats a TypeError three frames later.
+  if (!payload.id_token || typeof payload.id_token !== 'string') {
+    throw new Error(
+      `Token response has no id_token. Keys: ${Object.keys(payload).join(', ') || 'none'}`
+    )
+  }
+
+  return payload as TokenResponse
 }
 
 type IdTokenClaims = {
@@ -105,6 +126,7 @@ type IdTokenClaims = {
  * came straight from Shopify's token endpoint over TLS, never from the browser.
  */
 export function readIdToken(idToken: string): IdTokenClaims {
+  if (typeof idToken !== 'string') return {}
   const [, payload] = idToken.split('.')
   if (!payload) return {}
   try {
@@ -116,8 +138,47 @@ export function readIdToken(idToken: string): IdTokenClaims {
 
 /** The `sub` claim is the customer's numeric id, sometimes prefixed by shop id. */
 export function customerIdFromClaims(claims: IdTokenClaims): string | null {
-  const sub = claims.sub
+  const sub = typeof claims.sub === 'string' ? claims.sub : null
   if (!sub) return null
   const numeric = sub.split(/[^0-9]/).filter(Boolean).pop()
   return numeric ?? null
+}
+
+/**
+ * Asks the Customer Account API who the token belongs to. Authoritative, where
+ * the id_token claims are only a hint whose shape Shopify is free to change.
+ */
+export async function fetchCustomerId(accessToken: string): Promise<string | null> {
+  const version = process.env.SHOPIFY_CUSTOMER_API_VERSION || '2026-07'
+  const response = await fetch(
+    `https://shopify.com/${SHOP_ID}/account/customer/api/${version}/graphql`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: accessToken,
+      },
+      body: JSON.stringify({ query: '{ customer { id } }' }),
+      cache: 'no-store',
+    }
+  )
+
+  const raw = await response.text()
+  if (!response.ok) {
+    throw new Error(`Customer Account API ${response.status}: ${raw.slice(0, 200)}`)
+  }
+
+  let payload: { data?: { customer?: { id?: string } }; errors?: { message: string }[] }
+  try {
+    payload = JSON.parse(raw)
+  } catch {
+    throw new Error(`Customer Account API returned non-JSON: ${raw.slice(0, 200)}`)
+  }
+
+  if (payload.errors?.length) {
+    throw new Error(payload.errors.map((error) => error.message).join('; '))
+  }
+
+  const id = payload.data?.customer?.id
+  return id ? (id.split('/').pop() ?? null) : null
 }
