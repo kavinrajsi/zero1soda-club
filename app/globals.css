@@ -191,8 +191,8 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 18px;
-  padding: 32px 16px 48px;
+  gap: clamp(8px, 1.4vh, 16px);
+  padding: clamp(12px, 2.2vh, 32px) 16px clamp(14px, 2.4vh, 40px);
   background: var(--z1-paper);
 }
 .z1-receipt {
@@ -211,17 +211,17 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
     linear-gradient(#000 0 0) top left / 100% calc(100% - 26px) no-repeat;
 }
 .z1-receipt-head {
-  padding: 38px 30px 30px;
+  padding: clamp(20px, 3.4vh, 38px) 30px clamp(16px, 2.8vh, 30px);
   text-align: center;
 }
 .z1-receipt-mark {
-  font-size: 40px;
+  font-size: clamp(26px, 4.4vh, 40px);
   line-height: 1;
-  margin: 0 0 14px !important;
+  margin: 0 0 clamp(6px, 1.2vh, 14px) !important;
 }
 .z1-receipt-head h1 {
-  font-size: clamp(34px, 9vw, 44px);
-  margin: 0 0 8px;
+  font-size: clamp(26px, 5.4vh, 44px);
+  margin: 0 0 6px;
 }
 .z1-receipt-head > p:last-child {
   margin: 0 auto !important;
@@ -255,12 +255,12 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 }
 
 .z1-receipt-body {
-  padding: 28px 30px 4px;
+  padding: clamp(16px, 2.8vh, 28px) 30px 4px;
 }
 .z1-receipt-grid {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 20px 16px;
+  gap: clamp(10px, 1.9vh, 20px) 16px;
   margin: 0;
 }
 .z1-receipt-full {
@@ -278,7 +278,7 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 }
 .z1-receipt-grid dd {
   margin: 0;
-  font-size: 17px;
+  font-size: clamp(14px, 2.1vh, 17px);
   font-weight: 600;
   color: var(--z1-ink, #1c1212);
 }
@@ -287,8 +287,8 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 26px;
-  padding: 14px 16px;
+  margin-top: clamp(14px, 2.4vh, 26px);
+  padding: clamp(9px, 1.6vh, 14px) 16px;
   background: #f4f6f9;
   border-radius: 14px;
 }
@@ -314,8 +314,8 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 }
 .z1-receipt-void,
 .z1-receipt-used {
-  margin: 18px 0 0 !important;
-  padding: 11px 14px;
+  margin: clamp(10px, 1.8vh, 18px) 0 0 !important;
+  padding: clamp(8px, 1.4vh, 11px) 14px;
   border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
@@ -331,13 +331,13 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 }
 
 .z1-receipt-stub {
-  padding: 26px 30px 20px;
+  padding: clamp(14px, 2.6vh, 26px) 30px clamp(12px, 2vh, 20px);
   text-align: center;
   border-top: 2px dashed #d8dde5;
-  margin-top: 26px;
+  margin-top: clamp(14px, 2.6vh, 26px);
 }
 .z1-receipt-stub img {
-  width: min(240px, 68%);
+  width: min(240px, 68%, 30vh);
   height: auto;
   margin: 0 auto;
 }
@@ -467,5 +467,20 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
 @media (prefers-reduced-motion: reduce) {
   .z1-checkin-more > summary svg {
     transition: none;
+  }
+}
+
+/* Keep the whole stub in one view: drop the optional rows before scrolling. */
+@media (max-height: 700px) {
+  .z1-receipt-head > p:last-child {
+    display: none;
+  }
+  .z1-receipt-footer {
+    display: none;
+  }
+}
+@media (max-height: 600px) {
+  .z1-receipt-mark {
+    display: none;
   }
 }
