@@ -4,6 +4,7 @@ import { decodeTicket, loadTicket } from '@/lib/tickets'
 import { formatEventDate, formatEventTime } from '@/lib/format'
 import { parseEventTime } from '@/lib/events'
 import { isStaff } from '@/lib/checkin-auth'
+import { readSession } from '@/lib/auth/session'
 import { checkIn, signIn } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -68,6 +69,9 @@ export default async function CheckinPage({ params }: Props) {
           <p className="z1-kicker">CLUB ZERO1</p>
           <h1>Door check-in</h1>
           <p>Staff only. Enter the passcode to validate tickets on this device.</p>
+          <p className="z1-checkin-alt">
+            Or <a href="/login">sign in with your Shopify account</a>.
+          </p>
           <label>
             Staff passcode
             <input name="passcode" type="password" autoComplete="one-time-code" required autoFocus />
@@ -80,6 +84,7 @@ export default async function CheckinPage({ params }: Props) {
     )
   }
 
+  const session = await readSession()
   const ticket = await loadTicket(ref)
   if (!ticket) {
     return (
@@ -219,6 +224,12 @@ export default async function CheckinPage({ params }: Props) {
               Mark checked in
             </button>
           </form>
+        )}
+
+        {session && (
+          <p className="z1-checkin-next">
+            <a href="/checker/scan">Scan the next ticket</a>
+          </p>
         )}
 
         {state === 'unpaid' && (

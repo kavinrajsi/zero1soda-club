@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
+import { canCheckIn, readSession } from './auth/session'
 
 export const CHECKIN_COOKIE = 'z1_staff'
 
@@ -22,7 +23,13 @@ export function passcodeMatches(input: string): boolean {
   return timingSafeEqual(Buffer.from(input), Buffer.from(code))
 }
 
+/**
+ * A signed-in checker or admin needs no passcode; the shared passcode stays as
+ * a fallback for a phone that is not signed in.
+ */
 export async function isStaff(): Promise<boolean> {
+  if (canCheckIn(await readSession())) return true
+
   if (!passcode()) return false
   const store = await cookies()
   const current = store.get(CHECKIN_COOKIE)?.value

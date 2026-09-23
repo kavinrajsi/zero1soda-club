@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Anton, Poppins } from 'next/font/google'
 import './globals.css'
+import './staff.css'
 
 const anton = Anton({
   subsets: ['latin'],

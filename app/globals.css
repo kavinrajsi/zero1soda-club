@@ -487,3 +487,25 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
     display: none;
   }
 }
+
+/* Bridges from the buyer-facing check-in card into the staff modules. */
+.z1-checkin-alt,
+.z1-checkin-next {
+  margin: 14px 0 0 !important;
+  font-size: 12px;
+  text-align: center;
+  color: #6c6360;
+}
+.z1-checkin-alt a,
+.z1-checkin-next a {
+  color: inherit;
+  text-decoration: underline;
+}
+.z1-checkin-next {
+  margin-top: 18px !important;
+  font-size: 13px;
+  font-weight: 600;
+}
+.z1-checkin--locked .z1-checkin-card {
+  border-top: 10px solid var(--z1-ink, #1c1212);
+}

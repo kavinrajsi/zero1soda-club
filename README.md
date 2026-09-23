@@ -153,6 +153,58 @@ Existing orders placed before the webhook existed have no ticket key, so their
 emails render no QR block. Re-send the notification after the key exists, or
 treat them manually.
 
+## Staff modules
+
+Two gated modules share one sign in.
+
+```
+/login            Shopify customer login (Customer Account API, OAuth + PKCE)
+  │  tag club-admin   → /admin
+  │  tag club-checker → /checker
+  │  no staff tag     → refused
+  │
+  ├── /admin                       every event: sold, checked in, seats, value
+  │   └── /admin/events/<id>       one event, full guest list
+  │
+  └── /checker                     events, soonest first
+      ├── /checker/scan            camera scanner → /checkin/<token>
+      └── /checker/events/<id>     guest list, filter by came / not yet
+```
+
+Roles come from **Shopify customer tags**, read server-side through the Admin
+API: `club-admin` or `club-checker` (`lib/auth/roles.ts`). Tag a staff member in
+Shopify → Customers, and their next sign in picks it up. Admin implies checker,
+so an admin can work the door.
+
+The session is a signed cookie (`lib/auth/session.ts`), 12 hours, HMAC over
+`SESSION_SECRET`. A signed-in checker no longer needs `CHECKIN_PASSCODE` — the
+passcode stays as a fallback for a phone that is not signed in.
+
+### Setup
+
+1. Shopify admin → **Headless** → **Customer Account API** → **Manage**.
+2. Copy the **client ID** into `SHOPIFY_CUSTOMER_ACCOUNT_CLIENT_ID`, and the
+   numeric **shop id** into `SHOPIFY_SHOP_ID`.
+3. Add the callback URL: `https://club.zero1soda.com/api/auth/callback`
+   (add the `*.vercel.app` one too if you sign in on preview deploys).
+4. Set `SESSION_SECRET` to 32+ random characters.
+5. Tag the staff customers `club-admin` or `club-checker`.
+
+### Scanning
+
+`components/staff/QrScanner.tsx` uses the native `BarcodeDetector` where it
+exists and falls back to `jsQR` for iOS Safari. Either way it reads the QR,
+pulls the token out of the check-in URL and routes to `/checkin/<token>`, so the
+verdict screen is the same one a phone camera would reach. A manual code box
+covers a blocked or missing camera.
+
+### The 60-day window
+
+`lib/attendance.ts` counts sold and checked-in from orders, and the
+`read_orders` scope only reaches back 60 days. Events that ended before that are
+labelled *beyond the order history* rather than reported as zero. Lifting it
+needs `read_all_orders`, which Shopify approves case by case.
+
 ## Local development
 
 ```bash
