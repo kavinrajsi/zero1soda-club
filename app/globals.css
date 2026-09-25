@@ -348,6 +348,17 @@ html:has(.z1-mobile-menu[open]){overflow:hidden}
   text-transform: uppercase;
   color: #8b9199;
 }
+.z1-receipt-stub .z1-receipt-code {
+  margin-top: 4px !important;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+.z1-receipt-code strong {
+  font-size: 15px;
+  color: #1c1c1c;
+  letter-spacing: 0.08em;
+  user-select: all;
+}
 .z1-receipt-footer {
   margin: 0 !important;
   font-size: 12px;

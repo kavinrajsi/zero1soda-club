@@ -41,6 +41,8 @@ export type TicketDetails = TicketRef & {
   unitPrice: string
   currencyCode: string
   payments: TicketPayment[]
+  /** Short code staff can type at the door, e.g. "z1s1042-2". */
+  code: string
 }
 
 function secret(): string {
@@ -205,6 +207,89 @@ export function lineItemGid(lineItemId: string) {
   return lineItemId.startsWith('gid://') ? lineItemId : `gid://shopify/LineItem/${lineItemId}`
 }
 
+type SlotLine = { id: string; quantity: number; product: { productType: string } | null }
+
+/**
+ * Every ticket on an order, numbered 1..n across its event lines in order. The
+ * short code is the order number plus this position, so a one-line order of
+ * three tickets reads z1s1042-1, z1s1042-2, z1s1042-3.
+ */
+function ticketSlots<T extends SlotLine>(lines: T[]): { line: T; index: number }[] {
+  const slots: { line: T; index: number }[] = []
+  for (const line of lines) {
+    if (line.product?.productType !== 'Event ticket') continue
+    for (let index = 1; index <= line.quantity; index += 1) slots.push({ line, index })
+  }
+  return slots
+}
+
+export function formatTicketCode(orderName: string, position: number) {
+  return `${orderName.replace(/^#/, '')}-${position}`
+}
+
+/** Reads "z1s1042-2", "#z1s1042-2" or "z1s1042" (single-ticket orders). Null for anything else. */
+export function parseTicketCode(value: string): { order: string; position: number | null } | null {
+  const cleaned = value.replace(/\s+/g, '').replace(/^#/, '')
+  const withPosition = cleaned.match(/^([A-Za-z0-9-]*\d)-(\d{1,3})$/)
+  if (withPosition) return { order: withPosition[1], position: Number(withPosition[2]) }
+  if (/^[A-Za-z0-9]{0,10}\d$/.test(cleaned)) return { order: cleaned, position: null }
+  return null
+}
+
+const ORDER_BY_NAME_QUERY = /* GraphQL */ `
+  query ClubTicketByName($query: String!) {
+    orders(first: 5, query: $query) {
+      nodes {
+        id
+        name
+        lineItems(first: 50) {
+          nodes {
+            id
+            quantity
+            product {
+              productType
+            }
+          }
+        }
+      }
+    }
+  }
+`
+
+type OrderByNameResult = {
+  orders: { nodes: { id: string; name: string; lineItems: { nodes: SlotLine[] } }[] }
+}
+
+/**
+ * Resolves a short code to the same ticket its QR points at. Ids stay numeric
+ * to match the email link and roster, since check-in slots key on them.
+ */
+export async function findTicketByCode(value: string): Promise<TicketRef | null> {
+  const parsed = parseTicketCode(value)
+  if (!parsed) return null
+
+  const name = `#${parsed.order}`
+  const data = await admin<OrderByNameResult>(ORDER_BY_NAME_QUERY, {
+    query: `name:${JSON.stringify(name)} AND status:any`,
+  })
+  const order = data.orders.nodes.find(
+    (node) => node.name.toLowerCase() === name.toLowerCase()
+  )
+  if (!order) return null
+
+  const slots = ticketSlots(order.lineItems.nodes)
+  const position = parsed.position ?? (slots.length === 1 ? 1 : null)
+  const slot = position ? slots[position - 1] : undefined
+  if (!slot) return null
+
+  return {
+    orderId: order.id.split('/').pop() as string,
+    lineItemId: slot.line.id.split('/').pop() as string,
+    index: slot.index,
+    total: slot.line.quantity,
+  }
+}
+
 function checkedInMap(value: string | null | undefined): Record<string, string> {
   if (!value) return {}
   try {
@@ -226,6 +311,11 @@ export async function loadTicket(ref: TicketRef): Promise<TicketDetails | null> 
   if (!line) return null
   if (line.product?.productType !== 'Event ticket') return null
   if (ref.index < 1 || ref.index > line.quantity) return null
+
+  const position =
+    ticketSlots(order.lineItems.nodes).findIndex(
+      (slot) => slot.line.id === wanted && slot.index === ref.index
+    ) + 1
 
   const attribute = (key: string) =>
     line.customAttributes.find((item) => item.key === key)?.value || ''
@@ -257,6 +347,7 @@ export async function loadTicket(ref: TicketRef): Promise<TicketDetails | null> 
       amount: transaction.amountSet?.shopMoney.amount ?? '0',
       currencyCode: transaction.amountSet?.shopMoney.currencyCode ?? 'INR',
     })),
+    code: formatTicketCode(order.name, position),
   }
 }
 

@@ -116,6 +116,9 @@ export default async function TicketPage({ params }: Props) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qr} alt="Ticket QR code" width={420} height={420} />
           <p>Show this at the door</p>
+          <p className="z1-receipt-code">
+            Ticket code <strong>{ticket.code}</strong>
+          </p>
         </div>
       </div>
 

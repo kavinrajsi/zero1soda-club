@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { resolveTicketCode } from '@/app/checker/scan/actions'
 
 type ScannerState = 'starting' | 'scanning' | 'denied' | 'unsupported'
 
@@ -34,6 +35,7 @@ export default function QrScanner({ checkinPrefix }: { checkinPrefix: string }) 
   const [state, setState] = useState<ScannerState>('starting')
   const [manualCode, setManualCode] = useState('')
   const [hint, setHint] = useState('')
+  const [looking, setLooking] = useState(false)
 
   const handleValue = useCallback(
     (value: string) => {
@@ -48,6 +50,34 @@ export default function QrScanner({ checkinPrefix }: { checkinPrefix: string }) 
       router.push(`/checkin/${token}`)
     },
     [checkinPrefix, router]
+  )
+
+  /** Typed input may be a short code (z1s1042-2) rather than a full token. */
+  const handleManual = useCallback(
+    async (value: string) => {
+      if (handledRef.current || looking) return
+      if (!value || tokenFromValue(value, checkinPrefix)) {
+        handleValue(value)
+        return
+      }
+
+      setLooking(true)
+      setHint('')
+      let token: string | null = null
+      try {
+        token = await resolveTicketCode(value)
+      } catch {
+        // Network drop or server error: same message, button must not stick.
+      } finally {
+        setLooking(false)
+      }
+      if (!token) {
+        setHint('No ticket found for that code.')
+        return
+      }
+      handleValue(token)
+    },
+    [checkinPrefix, handleValue, looking]
   )
 
   useEffect(() => {
@@ -143,11 +173,11 @@ export default function QrScanner({ checkinPrefix }: { checkinPrefix: string }) 
         className="scanner__manual"
         onSubmit={(event) => {
           event.preventDefault()
-          handleValue(manualCode.trim())
+          void handleManual(manualCode.trim())
         }}
       >
         <label className="scanner__label" htmlFor="scanner-code">
-          Ticket code or link
+          Ticket code (e.g. z1s1042-1) or link
         </label>
         <div className="scanner__row">
           <input
@@ -155,11 +185,12 @@ export default function QrScanner({ checkinPrefix }: { checkinPrefix: string }) 
             className="scanner__input"
             value={manualCode}
             onChange={(event) => setManualCode(event.target.value)}
-            placeholder="Paste from the ticket"
+            placeholder="Code under the QR"
+            autoCapitalize="none"
             autoComplete="off"
           />
-          <button type="submit" className="scanner__submit">
-            Check
+          <button type="submit" className="scanner__submit" disabled={looking}>
+            {looking ? 'Finding…' : 'Check'}
           </button>
         </div>
       </form>
