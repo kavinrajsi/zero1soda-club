@@ -139,6 +139,22 @@ export async function admin<T>(query: string, variables: Record<string, unknown>
 }
 
 /**
+ * Admin REST read, for the odd field GraphQL doesn't expose (an order's
+ * checkout_token). Null on 404 so callers can treat "not there yet" as a state.
+ */
+export async function adminRest<T>(path: string): Promise<T | null> {
+  const response = await fetch(`https://${storeDomain()}/admin/api/${API_VERSION}/${path}`, {
+    headers: { 'X-Shopify-Access-Token': await adminToken() },
+    cache: 'no-store',
+  })
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw new ShopifyError(`Admin REST ${response.status}: ${await response.text()}`)
+  }
+  return (await response.json()) as T
+}
+
+/**
  * Shopify answers a partially-allowed query with both `data` and `errors` — a
  * field the token lacks a scope for comes back null rather than failing the
  * request. Losing the whole page over one optional field is worse than

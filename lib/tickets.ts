@@ -290,6 +290,77 @@ export async function findTicketByCode(value: string): Promise<TicketRef | null>
   }
 }
 
+const ORDER_TICKETS_QUERY = /* GraphQL */ `
+  query ClubOrderTickets($id: ID!) {
+    order(id: $id) {
+      id
+      name
+      lineItems(first: 50) {
+        nodes {
+          id
+          title
+          quantity
+          customAttributes {
+            key
+            value
+          }
+          product {
+            productType
+          }
+        }
+      }
+    }
+  }
+`
+
+type OrderTicketsResult = {
+  order: {
+    id: string
+    name: string
+    lineItems: {
+      nodes: (SlotLine & { title: string; customAttributes: { key: string; value: string | null }[] })[]
+    }
+  } | null
+}
+
+export type OrderTicket = {
+  token: string
+  code: string
+  event: string
+  /** Position within its line, e.g. 2 of 3. */
+  index: number
+  total: number
+}
+
+/**
+ * Every ticket on an order, signed the same way as the email, roster and short
+ * code (numeric ids) so all of them land on the same check-in slot. Null when
+ * the order isn't visible yet, which happens for a few seconds after checkout.
+ */
+export async function listOrderTickets(
+  orderId: string
+): Promise<{ orderName: string; tickets: OrderTicket[] } | null> {
+  const data = await admin<OrderTicketsResult>(ORDER_TICKETS_QUERY, { id: orderGid(orderId) })
+  const order = data.order
+  if (!order) return null
+
+  const numericOrderId = order.id.split('/').pop() as string
+  const tickets = ticketSlots(order.lineItems.nodes).map(({ line, index }, position) => ({
+    token: encodeTicket({
+      orderId: numericOrderId,
+      lineItemId: line.id.split('/').pop() as string,
+      index,
+      total: line.quantity,
+    }),
+    code: formatTicketCode(order.name, position + 1),
+    event: line.customAttributes.find((item) => item.key === 'Event')?.value || line.title,
+    index,
+    total: line.quantity,
+  }))
+
+  return { orderName: order.name, tickets }
+}
+
 function checkedInMap(value: string | null | undefined): Record<string, string> {
   if (!value) return {}
   try {

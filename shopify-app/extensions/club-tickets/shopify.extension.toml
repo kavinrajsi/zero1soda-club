@@ -1,0 +1,15 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "Club tickets"
+handle = "club-tickets"
+type = "ui_extension"
+
+# Placed by the merchant in the checkout editor, on the Thank you page.
+[[extensions.targeting]]
+module = "./src/ThankYou.tsx"
+target = "purchase.thank-you.block.render"
+
+# Tickets come from club.zero1soda.com/api/thank-you/tickets.
+[extensions.capabilities]
+network_access = true

@@ -1,0 +1,15 @@
+{
+  "name": "club-zero1-shopify-app",
+  "private": true,
+  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "scripts": {
+    "shopify": "shopify",
+    "dev": "shopify app dev",
+    "deploy": "shopify app deploy"
+  },
+  "workspaces": ["extensions/*"],
+  "devDependencies": {
+    "@shopify/cli": "^3.80.0"
+  }
+}
