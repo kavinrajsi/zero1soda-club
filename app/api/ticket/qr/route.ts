@@ -1,15 +1,10 @@
-import { timingSafeEqual } from 'node:crypto'
 import QRCode from 'qrcode'
-import { decodeTicket, encodeTicket, loadTicket, readTicketKey } from '@/lib/tickets'
+import { decodeTicket, encodeTicket, loadTicket, ticketKeyMatches } from '@/lib/tickets'
 import type { TicketRef } from '@/lib/tickets'
 import { SITE } from '@/lib/site'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-function equal(a: string, b: string) {
-  return a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b))
-}
 
 /**
  * Renders one ticket's QR as a PNG. Two ways in:
@@ -17,7 +12,8 @@ function equal(a: string, b: string) {
  * - `?token=` — a signed ticket handle, used by the hosted ticket page.
  * - `?o=&l=&n=&t=&k=` — raw ids plus the order's ticket key, used by the
  *   Shopify order email, whose Liquid can't compute a signature. The key is
- *   random per order, so a guessed order id alone mints nothing.
+ *   the order's secret status-page token (or its older ticket key), so a
+ *   guessed order id alone mints nothing.
  */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
@@ -41,8 +37,7 @@ export async function GET(request: Request) {
     }
 
     try {
-      const expectedKey = await readTicketKey(orderId)
-      if (!expectedKey || !equal(expectedKey, key)) {
+      if (!(await ticketKeyMatches(orderId, key))) {
         return new Response('not found', { status: 404 })
       }
     } catch (error) {

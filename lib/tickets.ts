@@ -356,6 +356,48 @@ export async function readTicketKey(orderId: string): Promise<string | null> {
   return data.order?.ticketKey?.value ?? null
 }
 
+const ORDER_KEYS_QUERY = /* GraphQL */ `
+  query ClubTicketKeys($id: ID!) {
+    order(id: $id) {
+      statusPageUrl
+      ticketKey: metafield(namespace: "club", key: "ticket_key") {
+        value
+      }
+    }
+  }
+`
+
+type OrderKeysResult = {
+  order: { statusPageUrl: string | null; ticketKey: { value: string } | null } | null
+}
+
+/**
+ * The secret segment of an order-status URL (/orders/<token>/...). Must match
+ * how docs/order-email-snippet.liquid cuts it out of order_status_url.
+ */
+export function statusPageToken(url: string | null | undefined): string | null {
+  const after = url?.split('/orders/')[1]
+  if (!after) return null
+  return after.split('/')[0].split('?')[0] || null
+}
+
+/**
+ * Email links prove ownership with a key. New emails use the order-status
+ * token, which exists when Shopify renders the email; older ones used the
+ * webhook's metafield, which lands a few seconds too late for that. Both work.
+ */
+export async function ticketKeyMatches(orderId: string, key: string): Promise<boolean> {
+  if (!key) return false
+  const data = await admin<OrderKeysResult>(ORDER_KEYS_QUERY, { id: orderGid(orderId) })
+  const candidates = [data.order?.ticketKey?.value, statusPageToken(data.order?.statusPageUrl)]
+  return candidates.some(
+    (candidate) =>
+      !!candidate &&
+      candidate.length === key.length &&
+      timingSafeEqual(Buffer.from(candidate), Buffer.from(key))
+  )
+}
+
 const METAFIELDS_SET = /* GraphQL */ `
   mutation ClubTicketMetafields($metafields: [MetafieldsSetInput!]!) {
     metafieldsSet(metafields: $metafields) {

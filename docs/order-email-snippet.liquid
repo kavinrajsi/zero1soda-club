@@ -23,13 +23,19 @@
   /api/checkout. That is the test used here — more reliable than product type,
   and it also gives the venue and city without extra lookups.
 
-  order.metafields.club.ticket_key is written by the orders/create webhook
-  (/api/webhooks/orders). While it is blank this block renders nothing, which
-  also means no tickets went out — check the webhook before the template.
+  THE KEY IN EACH LINK
+  The QR and view links carry the secret token from order_status_url, which
+  Shopify has before this email renders. The webhook's metafield
+  (order.metafields.club.ticket_key) is only a fallback: it lands a few seconds
+  after the order, too late for the first send. The server accepts either, and
+  statusPageToken() in lib/tickets.ts must cut the token out the same way.
 {%- endcomment -%}
 
 {%- assign club_url = 'https://club.zero1soda.com' -%}
-{%- assign ticket_key = order.metafields.club.ticket_key -%}
+{%- assign ticket_key = order_status_url | split: '/orders/' | last | split: '/' | first | split: '?' | first -%}
+{%- if ticket_key == blank or ticket_key contains ':' -%}
+  {%- assign ticket_key = order.metafields.club.ticket_key -%}
+{%- endif -%}
 
 {%- if ticket_key -%}
   {%- assign has_tickets = false -%}

@@ -1,13 +1,12 @@
-import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
-import { encodeTicket, readTicketKey } from '@/lib/tickets'
+import { encodeTicket, ticketKeyMatches } from '@/lib/tickets'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
  * Entry point for the "view your ticket" link in the order email. Liquid can't
- * sign a token, so it passes the order's ticket key and this swaps it for one.
+ * sign a token, so it passes the order's key and this swaps it for one.
  */
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams
@@ -22,11 +21,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const expected = await readTicketKey(orderId)
-    if (!expected || expected.length !== key.length) {
-      return new NextResponse('not found', { status: 404 })
-    }
-    if (!timingSafeEqual(Buffer.from(expected), Buffer.from(key))) {
+    if (!(await ticketKeyMatches(orderId, key))) {
       return new NextResponse('not found', { status: 404 })
     }
   } catch (error) {
