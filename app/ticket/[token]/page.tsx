@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { decodeTicket, loadTicket } from '@/lib/tickets'
+import { decodeTicket, loadTicket, paymentState } from '@/lib/tickets'
 import { formatEventDate, formatEventTime } from '@/lib/format'
 import { parseEventTime } from '@/lib/events'
 import { SITE } from '@/lib/site'
@@ -48,7 +48,7 @@ export default async function TicketPage({ params }: Props) {
   const qr = `/api/ticket/qr?size=420&token=${encodeURIComponent(token)}`
   const gateway = ticket.payments.find((payment) => payment.kind === 'SALE')?.gateway
   const refunded =
-    ticket.financialStatus === 'REFUNDED' || ticket.financialStatus === 'PARTIALLY_REFUNDED'
+    ticket.refunded || paymentState(ticket.financialStatus) === 'refunded'
 
   return (
     <div className="z1 z1-ticket-page">

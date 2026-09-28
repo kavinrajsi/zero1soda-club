@@ -99,7 +99,10 @@ export default async function CheckinPage({ params }: Props) {
 
   const startsAt = parseEventTime(ticket.startsAt)
   const used = ticket.checkedInAt !== null
-  const payment = paymentState(ticket.financialStatus)
+  // Shopify can refund a ticket's unit while the order still reads PAID.
+  const payment = ticket.refunded
+    ? { heading: 'REFUNDED', message: 'This ticket was refunded' }
+    : paymentState(ticket.financialStatus)
   // Date the money moved back, when there is one, so staff can cite it.
   const refundedAt = ticket.payments.find((item) => item.kind === 'REFUND')?.processedAt
   const state = !ticket.paid ? 'unpaid' : used ? 'used' : 'valid'

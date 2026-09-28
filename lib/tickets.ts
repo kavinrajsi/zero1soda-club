@@ -33,6 +33,8 @@ export type TicketDetails = TicketRef & {
   buyerEmail: string
   quantity: number
   paid: boolean
+  /** This ticket's unit was refunded, even if the order still reads PAID. */
+  refunded: boolean
   checkedInAt: string | null
   financialStatus: string
   note: string | null
@@ -130,6 +132,7 @@ const ORDER_QUERY = /* GraphQL */ `
           id
           title
           quantity
+          currentQuantity
           originalUnitPriceSet {
             shopMoney {
               amount
@@ -185,6 +188,8 @@ type OrderResult = {
         id: string
         title: string
         quantity: number
+        /** Units left after refunds and removals. */
+        currentQuantity: number
         originalUnitPriceSet: { shopMoney: { amount: string; currencyCode: string } } | null
         customAttributes: { key: string; value: string | null }[]
         product: {
@@ -233,6 +238,14 @@ export function paymentState(financialStatus: string | null | undefined): Paymen
   if (financialStatus === 'PAID' || financialStatus === 'PARTIALLY_REFUNDED') return 'paid'
   if (financialStatus === 'REFUNDED' || financialStatus === 'VOIDED') return 'refunded'
   return 'unpaid'
+}
+
+/**
+ * Shopify records how many units of a line were refunded, not which ones, so
+ * the last tickets on the line are the ones that stop working.
+ */
+export function ticketRefunded(index: number, currentQuantity: number): boolean {
+  return index > currentQuantity
 }
 
 export function formatTicketCode(orderName: string, position: number) {
@@ -413,7 +426,10 @@ export async function loadTicket(ref: TicketRef): Promise<TicketDetails | null> 
     buyerName: attribute('Booking name') || order.customer?.displayName || '',
     buyerEmail: attribute('Booking email') || order.email || '',
     quantity: line.quantity,
-    paid: paymentState(order.displayFinancialStatus) === 'paid',
+    paid:
+      paymentState(order.displayFinancialStatus) === 'paid' &&
+      !ticketRefunded(ref.index, line.currentQuantity),
+    refunded: ticketRefunded(ref.index, line.currentQuantity),
     checkedInAt: checkedInMap(order.checkedIn?.value)[ticketSlotKey(ref)] ?? null,
     financialStatus: order.displayFinancialStatus ?? 'UNKNOWN',
     note: order.note,

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { CHECKIN_COOKIE, isStaff, passcodeMatches, staffCookieValue } from '@/lib/checkin-auth'
-import { decodeTicket, markCheckedIn } from '@/lib/tickets'
+import { decodeTicket, loadTicket, markCheckedIn } from '@/lib/tickets'
 
 export async function signIn(formData: FormData) {
   const code = String(formData.get('passcode') || '')
@@ -26,6 +26,11 @@ export async function checkIn(formData: FormData) {
   const token = String(formData.get('token') || '')
   const ref = decodeTicket(token)
   if (!ref) return
+
+  // The button only shows for valid tickets; check again so a stale screen or
+  // a replayed form can't admit an unpaid or refunded one.
+  const ticket = await loadTicket(ref)
+  if (!ticket?.paid) return
 
   await markCheckedIn(ref)
   revalidatePath(`/checkin/${token}`)

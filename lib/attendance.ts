@@ -1,6 +1,12 @@
 import { admin } from '@/lib/shopify'
 import { EVENT_PRODUCT_TYPE } from '@/lib/events'
-import { encodeTicket, formatTicketCode, paymentState, type PaymentState } from '@/lib/tickets'
+import {
+  encodeTicket,
+  formatTicketCode,
+  paymentState,
+  ticketRefunded,
+  type PaymentState,
+} from '@/lib/tickets'
 
 /**
  * Shopify's read_orders scope only reaches back 60 days. Events inside that
@@ -28,6 +34,7 @@ const ORDERS_QUERY = /* GraphQL */ `
           nodes {
             id
             quantity
+            currentQuantity
             discountedTotalSet {
               shopMoney {
                 amount
@@ -64,6 +71,7 @@ type OrdersResult = {
         nodes: {
           id: string
           quantity: number
+          currentQuantity: number
           discountedTotalSet: { shopMoney: { amount: string; currencyCode: string } } | null
           customAttributes: { key: string; value: string | null }[]
           product: { id: string; title: string; productType: string } | null
@@ -174,18 +182,20 @@ export async function loadAttendance(): Promise<{
           attendees: [],
         }
 
-        if (payment === 'refunded') {
-          bucket.refunded += line.quantity
-        } else {
-          bucket.sold += line.quantity
-          if (payment === 'unpaid') bucket.unpaid += line.quantity
-          if (payment === 'paid') bucket.revenue += Number(total?.amount ?? 0)
+        // A partial refund voids the line's last tickets (see ticketRefunded).
+        const live = payment === 'refunded' ? 0 : Math.min(line.currentQuantity, line.quantity)
+        bucket.sold += live
+        bucket.refunded += line.quantity - live
+        if (payment === 'unpaid') bucket.unpaid += live
+        if (payment === 'paid' && line.quantity > 0) {
+          bucket.revenue += (Number(total?.amount ?? 0) / line.quantity) * live
         }
 
         for (let index = 1; index <= line.quantity; index += 1) {
           position += 1
+          const ticketPayment: PaymentState = ticketRefunded(index, live) ? 'refunded' : payment
           const checkedInAt = used[`${lineItemId}:${index}`] ?? null
-          if (checkedInAt && payment !== 'refunded') bucket.checkedIn += 1
+          if (checkedInAt && ticketPayment !== 'refunded') bucket.checkedIn += 1
 
           bucket.attendees.push({
             token: encodeTicket({ orderId, lineItemId, index, total: line.quantity }),
@@ -198,7 +208,7 @@ export async function loadAttendance(): Promise<{
             name: attribute(line.customAttributes, 'Booking name'),
             email: attribute(line.customAttributes, 'Booking email'),
             phone: attribute(line.customAttributes, 'Booking phone'),
-            payment,
+            payment: ticketPayment,
             checkedInAt,
           })
         }

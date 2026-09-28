@@ -213,8 +213,12 @@ covers a blocked or missing camera.
 
 - **Cancelled** orders are left out entirely.
 - **Refunded / voided** tickets are listed (struck through) but not counted as
-  sold or checked in. A **partial refund** still counts as paid, at the door too
-  (`paymentState()` in `lib/tickets.ts` is the one rule for both).
+  sold or checked in. Refunds are per ticket: Shopify records how many units of
+  a line were refunded (`currentQuantity`), not which, so the line's last
+  tickets are void and the rest stay valid. This also catches units refunded
+  on an order that still reads PAID. The door, the buyer's ticket page and the
+  rosters share the rule (`paymentState()` and `ticketRefunded()` in
+  `lib/tickets.ts`).
 - **Paid revenue** is the sum of paid line totals after line discounts, so events
   with several ticket prices add up correctly.
 - Events taken off the store still show under **Not on the store** while their
