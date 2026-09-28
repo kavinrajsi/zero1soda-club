@@ -151,8 +151,8 @@ Single use is the point: the first scan records a timestamp in the order's
    the same deployment. Only Shopify calls that URL; buyers still see
    `club.zero1soda.com` in their email.
 
-4. Paste `docs/order-email-snippet.liquid` into Settings → Notifications →
-   Order confirmation → Edit code.
+4. Add the "Your tickets" block to Settings → Notifications → Order
+   confirmation → Edit code, above the Customer information section.
 
 Existing orders placed before the webhook existed have no ticket key, so their
 emails render no QR block. Re-send the notification after the key exists, or

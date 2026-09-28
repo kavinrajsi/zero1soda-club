@@ -444,7 +444,7 @@ type OrderKeysResult = {
 
 /**
  * The secret segment of an order-status URL (/orders/<token>/...). Must match
- * how docs/order-email-snippet.liquid cuts it out of order_status_url.
+ * how the order confirmation email's Liquid cuts it out of order_status_url.
  */
 export function statusPageToken(url: string | null | undefined): string | null {
   const after = url?.split('/orders/')[1]

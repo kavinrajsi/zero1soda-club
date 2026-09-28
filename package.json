@@ -9,8 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "shopify:setup": "node scripts/setup-shopify.mjs",
-    "shopify:webhook": "node scripts/register-webhook.mjs",
-    "email:merge": "node scripts/merge-order-email.mjs"
+    "shopify:webhook": "node scripts/register-webhook.mjs"
   },
   "dependencies": {
     "jsqr": "^1.4.0",
