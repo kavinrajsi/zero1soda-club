@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import { SITE } from '@/lib/site'
+import Icon from './Icon'
 
 const LINKS = [
   { label: 'Happening now', href: '#Z1Upcoming' },
@@ -67,9 +68,7 @@ export default function SiteNav() {
           aria-haspopup="dialog"
           onClick={openMenu}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          </svg>
+          <Icon name="menu" />
         </button>
       </nav>
       <dialog
@@ -88,7 +87,7 @@ export default function SiteNav() {
             autoFocus
             onClick={closeMenu}
           >
-            ×
+            <Icon name="close" />
           </button>
         </div>
         <nav className="z1-drawer-links" aria-label="Mobile navigation">

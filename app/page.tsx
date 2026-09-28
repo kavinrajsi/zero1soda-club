@@ -1,9 +1,16 @@
+import type { Viewport } from 'next'
 import Image from 'next/image'
 import ClubPage from '@/components/ClubPage'
 import SiteNav from '@/components/SiteNav'
 import { getEvents } from '@/lib/events'
+import Icon from '@/components/Icon'
 
 export const revalidate = 60
+
+// Tints the mobile browser bar to match the red nav on the public page only.
+export const viewport: Viewport = {
+  themeColor: '#ef250c',
+}
 
 export default async function Page() {
   const { events, isSample, error } = await getEvents()
@@ -37,7 +44,7 @@ export default async function Page() {
           <h1>GOOD PEOPLE. GREAT PLANS.</h1>
           <p>Workshops, meetups and a little something different. Come find your people.</p>
           <a href="#Z1Upcoming" className="z1-pill z1-white">
-            Find your next event <span aria-hidden="true">↗</span>
+            Find your next event <Icon name="arrow_outward" size={18} />
           </a>
         </div>
       </header>

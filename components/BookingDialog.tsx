@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Icon from './Icon'
 import type { ClubEvent } from '@/lib/types'
 import { formatEventDate, formatEventTime, formatMoney } from '@/lib/format'
 import { SITE } from '@/lib/site'
@@ -137,7 +138,7 @@ export default function BookingDialog({ event, onClose }: Props) {
   return (
     <dialog className="z1-dialog" ref={dialog} onClose={onClose} aria-labelledby="Z1BookingTitle">
       <button type="button" className="z1-close" aria-label="Close booking" onClick={close}>
-        ×
+        <Icon name="close" />
       </button>
       <p className="z1-kicker">
         {formatEventDate(event.startsAt)} · {formatEventTime(event.startsAt, event.endsAt)}
@@ -234,7 +235,7 @@ export default function BookingDialog({ event, onClose }: Props) {
               disabled={busy || quantity <= 1}
               onClick={() => setQuantity((value) => Math.max(1, value - 1))}
             >
-              −
+              <Icon name="remove" size={20} />
             </button>
             <input
               type="number"
@@ -254,7 +255,7 @@ export default function BookingDialog({ event, onClose }: Props) {
               disabled={busy || quantity >= maxQuantity}
               onClick={() => setQuantity((value) => Math.min(maxQuantity, value + 1))}
             >
-              +
+              <Icon name="add" size={20} />
             </button>
           </div>
         </div>
@@ -302,7 +303,7 @@ export default function BookingDialog({ event, onClose }: Props) {
         <p role="status">{status}</p>
 
         <button type="submit" className="z1-pill z1-submit" disabled={busy || !variant}>
-          {busy ? 'Working…' : 'Continue to checkout'} <span aria-hidden="true">↗</span>
+          {busy ? 'Working…' : 'Continue to checkout'} <Icon name="arrow_outward" size={18} />
         </button>
         <a className="z1-cart-link" href={`${SITE.storeUrl}/cart`} target="_blank" rel="noopener noreferrer">
           Checkout is completed securely on zero1soda.com

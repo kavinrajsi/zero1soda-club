@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Icon from './Icon'
 import {
   collectErrors,
   FIELD_LIMITS,
@@ -108,7 +109,7 @@ export default function InterestDialog({ open, eventName, city, cities, onClose 
         aria-label="Close notification form"
         onClick={() => dialog.current?.close()}
       >
-        ×
+        <Icon name="close" />
       </button>
       <p className="z1-kicker">DON&rsquo;T MISS THE NEXT ONE</p>
       <h2 id="Z1InterestTitle">KEEP ME IN THE LOOP.</h2>

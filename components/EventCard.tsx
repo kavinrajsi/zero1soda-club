@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import type { ClubEvent } from '@/lib/types'
 import { formatEventDate, formatEventTime, formatMoney } from '@/lib/format'
+import Icon from './Icon'
 
 type Props = {
   event: ClubEvent
@@ -84,7 +85,7 @@ export default function EventCard({ event, past, wide, now, onBook, onNotify }: 
               From <strong>{formatMoney(event.minPrice, event.currencyCode)}</strong> / ticket
             </span>
             <button type="button" className="z1-pill" data-book="" onClick={() => onBook(event)}>
-              Book tickets <span aria-hidden="true">↗</span>
+              Book tickets <Icon name="arrow_outward" size={18} />
             </button>
           </>
         )}

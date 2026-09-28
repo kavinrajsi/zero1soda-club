@@ -7,6 +7,7 @@ import EventCard from './EventCard'
 import InterestDialog from './InterestDialog'
 import { SITE } from '@/lib/site'
 import type { ClubEvent } from '@/lib/types'
+import Icon from './Icon'
 
 type Props = {
   events: ClubEvent[]
@@ -127,7 +128,7 @@ export default function ClubPage({ events, now, isSample, error }: Props) {
             <h2 id="Z1UpcomingTitle">HAPPENING NOW</h2>
           </div>
           <p>
-            Your city. Your people.
+            Your city. Your people.{' '}
             <br />
             Your next good time.
           </p>
@@ -186,7 +187,7 @@ export default function ClubPage({ events, now, isSample, error }: Props) {
             <h2 id="Z1PastTitle">PAST EVENTS</h2>
           </div>
           <p>
-            Missed it?
+            Missed it?{' '}
             <br />
             Be in the loop for the next one.
           </p>
@@ -224,7 +225,7 @@ export default function ClubPage({ events, now, isSample, error }: Props) {
           className="z1-pill z1-white"
           onClick={() => openInterest('Events in my city', city)}
         >
-          Register your interest <span aria-hidden="true">↗</span>
+          Register your interest <Icon name="arrow_outward" size={18} />
         </button>
         <div className="z1-bird-perch" aria-hidden="true">
           <Image
@@ -257,7 +258,7 @@ export default function ClubPage({ events, now, isSample, error }: Props) {
           aria-label="Close photo"
           onClick={() => lightbox.current?.close()}
         >
-          ×
+          <Icon name="close" />
         </button>
         {photo && (
           <>
