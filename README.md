@@ -168,8 +168,12 @@ Two gated modules share one sign in.
   │  tag club-checker → /checker
   │  no staff tag     → refused
   │
-  ├── /admin                       every event: sold, checked in, seats, value
-  │   └── /admin/events/<id>       one event, full guest list
+  ├── /admin                       every event: sold, checked in, seats, paid revenue,
+  │   │                            "Notify me" sign-ups by city
+  │   ├── /admin/events/<id>       one event: guest list with contact details,
+  │   │                            filter (not yet / in / unpaid / refunded), search,
+  │   │                            tap a guest to check them in by hand
+  │   └── /admin/events/<id>/export  the guest list as CSV
   │
   └── /checker                     events, soonest first
       ├── /checker/scan            camera scanner → /checkin/<token>
@@ -202,6 +206,19 @@ exists and falls back to `jsQR` for iOS Safari. Either way it reads the QR,
 pulls the token out of the check-in URL and routes to `/checkin/<token>`, so the
 verdict screen is the same one a phone camera would reach. A manual code box
 covers a blocked or missing camera.
+
+### How the numbers are counted
+
+`lib/attendance.ts` reads each order once:
+
+- **Cancelled** orders are left out entirely.
+- **Refunded / voided** tickets are listed (struck through) but not counted as
+  sold or checked in. A **partial refund** still counts as paid, at the door too
+  (`paymentState()` in `lib/tickets.ts` is the one rule for both).
+- **Paid revenue** is the sum of paid line totals after line discounts, so events
+  with several ticket prices add up correctly.
+- Events taken off the store still show under **Not on the store** while their
+  orders are inside the window.
 
 ### The 60-day window
 

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 import AttendeeList from '@/components/staff/AttendeeList'
 import StaffBar from '@/components/staff/StaffBar'
 import { requireStaff } from '@/lib/auth/guard'
-import { loadAttendance } from '@/lib/attendance'
+import { filterRoster, loadAttendance, rosterCounts } from '@/lib/attendance'
 import { getEvents } from '@/lib/events'
 import { formatEventDate, formatEventTime } from '@/lib/format'
 
@@ -32,14 +32,8 @@ export default async function CheckerEventPage({ params, searchParams }: Props) 
   const stats = attendance.byProduct.get(productId)
   const all = stats?.attendees ?? []
   const filter = show === 'in' || show === 'due' ? show : 'all'
-  const attendees =
-    filter === 'in'
-      ? all.filter((attendee) => attendee.checkedInAt)
-      : filter === 'due'
-        ? all.filter((attendee) => !attendee.checkedInAt)
-        : all
-
-  const checkedIn = all.filter((attendee) => attendee.checkedInAt).length
+  const attendees = filterRoster(all, filter)
+  const counts = rosterCounts(all)
 
   return (
     <main className="checker">
@@ -60,15 +54,15 @@ export default async function CheckerEventPage({ params, searchParams }: Props) 
       </p>
 
       <p className="checker__tally">
-        <strong>{checkedIn}</strong> in · <strong>{all.length - checkedIn}</strong> still to come
+        <strong>{counts.in}</strong> in · <strong>{counts.due}</strong> still to come
       </p>
 
       <nav className="checker-filter" aria-label="Filter guests">
         {(
           [
-            ['all', 'All', all.length],
-            ['due', 'Not yet', all.length - checkedIn],
-            ['in', 'Checked in', checkedIn],
+            ['all', 'All', counts.all],
+            ['due', 'Not yet', counts.due],
+            ['in', 'Checked in', counts.in],
           ] as const
         ).map(([value, label, count]) => (
           <Link

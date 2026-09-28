@@ -14,23 +14,39 @@ type Props = {
   attendees: Attendee[]
   /** Checkers get a link straight to the check-in screen for each ticket. */
   linkToCheckin?: boolean
+  /** Admins see each guest's email and phone under the row. */
+  showContact?: boolean
+  /** Shown when the list is empty, e.g. because a filter matched nothing. */
+  emptyText?: string
 }
 
-export default function AttendeeList({ attendees, linkToCheckin = false }: Props) {
+export default function AttendeeList({
+  attendees,
+  linkToCheckin = false,
+  showContact = false,
+  emptyText = 'No tickets sold for this event yet.',
+}: Props) {
   if (attendees.length === 0) {
-    return <p className="roster__empty">No tickets sold for this event yet.</p>
+    return <p className="roster__empty">{emptyText}</p>
   }
 
   return (
     <ul className="roster">
       {attendees.map((attendee) => {
-        const status = attendee.checkedInAt ? 'in' : attendee.paid ? 'due' : 'unpaid'
+        const status =
+          attendee.payment === 'refunded'
+            ? 'refunded'
+            : attendee.checkedInAt
+              ? 'in'
+              : attendee.payment === 'paid'
+                ? 'due'
+                : 'unpaid'
         const row = (
           <>
             <span className="roster__who">
               <strong className="roster__name">{attendee.name || 'Guest'}</strong>
               <small className="roster__detail">
-                {attendee.orderName}
+                {attendee.code}
                 {attendee.quantity > 1 ? ` · ticket ${attendee.index} of ${attendee.quantity}` : ''}
               </small>
             </span>
@@ -38,6 +54,7 @@ export default function AttendeeList({ attendees, linkToCheckin = false }: Props
               {status === 'in' && `In ${formatStamp(attendee.checkedInAt as string)}`}
               {status === 'due' && 'Not yet'}
               {status === 'unpaid' && 'Unpaid'}
+              {status === 'refunded' && 'Refunded'}
             </span>
           </>
         )
@@ -50,6 +67,12 @@ export default function AttendeeList({ attendees, linkToCheckin = false }: Props
               </Link>
             ) : (
               <span className="roster__link roster__link--static">{row}</span>
+            )}
+            {showContact && (attendee.email || attendee.phone) && (
+              <p className="roster__contact">
+                {attendee.email && <a href={`mailto:${attendee.email}`}>{attendee.email}</a>}
+                {attendee.phone && <a href={`tel:${attendee.phone}`}>{attendee.phone}</a>}
+              </p>
             )}
           </li>
         )

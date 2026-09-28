@@ -319,6 +319,89 @@
   color: var(--staff-muted);
 }
 
+/* Admin tools: event actions, guest search, interest by city. */
+.admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.admin__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 140px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--staff-ink);
+  border-radius: 30px;
+  color: var(--staff-ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.admin-search {
+  margin: 0 0 12px;
+}
+.admin-search__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--staff-muted);
+}
+.admin-search__row {
+  display: flex;
+  gap: 8px;
+}
+.admin-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  padding: 12px 13px;
+  border: 1px solid var(--staff-line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 16px;
+}
+.admin-search__submit {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--staff-ink);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin__subtitle a {
+  color: inherit;
+}
+.admin-interest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--staff-line);
+  border-radius: 14px;
+}
+.admin-interest__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+.admin-interest__row + .admin-interest__row {
+  border-top: 1px solid var(--staff-line);
+}
+.admin__footnote code {
+  font-size: 11px;
+}
+
 /* -------------------------------------------------------------- checker */
 
 .checker__scan-cta {
@@ -392,6 +475,7 @@
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   min-height: 44px;
 }
 .checker-filter__option--active {
@@ -463,6 +547,23 @@
 .roster__status--unpaid {
   background: #fdecea;
   color: #9c241a;
+}
+.roster__status--refunded {
+  background: var(--staff-paper);
+  color: var(--staff-muted);
+  text-decoration: line-through;
+}
+.roster__contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: -6px 0 0;
+  padding: 0 14px 12px;
+  font-size: 12px;
+}
+.roster__contact a {
+  color: var(--staff-muted);
+  overflow-wrap: anywhere;
 }
 .roster__empty {
   margin: 0;

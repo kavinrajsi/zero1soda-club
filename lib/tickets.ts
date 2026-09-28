@@ -223,6 +223,18 @@ function ticketSlots<T extends SlotLine>(lines: T[]): { line: T; index: number }
   return slots
 }
 
+export type PaymentState = 'paid' | 'unpaid' | 'refunded'
+
+/**
+ * One rule for the door and the rosters. A partial refund leaves the rest of
+ * the order's tickets valid; a full refund or void cancels them all.
+ */
+export function paymentState(financialStatus: string | null | undefined): PaymentState {
+  if (financialStatus === 'PAID' || financialStatus === 'PARTIALLY_REFUNDED') return 'paid'
+  if (financialStatus === 'REFUNDED' || financialStatus === 'VOIDED') return 'refunded'
+  return 'unpaid'
+}
+
 export function formatTicketCode(orderName: string, position: number) {
   return `${orderName.replace(/^#/, '')}-${position}`
 }
@@ -401,7 +413,7 @@ export async function loadTicket(ref: TicketRef): Promise<TicketDetails | null> 
     buyerName: attribute('Booking name') || order.customer?.displayName || '',
     buyerEmail: attribute('Booking email') || order.email || '',
     quantity: line.quantity,
-    paid: order.displayFinancialStatus === 'PAID',
+    paid: paymentState(order.displayFinancialStatus) === 'paid',
     checkedInAt: checkedInMap(order.checkedIn?.value)[ticketSlotKey(ref)] ?? null,
     financialStatus: order.displayFinancialStatus ?? 'UNKNOWN',
     note: order.note,
