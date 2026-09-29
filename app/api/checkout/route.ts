@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
+import { logToSheet } from '@/lib/sheets'
 import { SITE } from '@/lib/site'
 import { storefront } from '@/lib/shopify'
 import { parseEventTime } from '@/lib/events'
@@ -169,6 +170,21 @@ export async function POST(request: Request) {
 
     const checkoutUrl = data.cartCreate.cart?.checkoutUrl
     if (!checkoutUrl) return fail('Checkout could not be created. Please try again.')
+
+    // A booking attempt, not a sale: the order may never be paid.
+    after(() =>
+      logToSheet('Bookings', [
+        name,
+        email,
+        contactNumber,
+        eventTitle,
+        eventCity,
+        eventVenue,
+        variantId,
+        quantity,
+        checkoutUrl,
+      ])
+    )
 
     return NextResponse.json({ checkoutUrl })
   } catch (error) {

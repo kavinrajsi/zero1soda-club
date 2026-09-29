@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
+import { logToSheet } from '@/lib/sheets'
 import { admin, isAdminConfigured } from '@/lib/shopify'
 import {
   normalisePhone,
@@ -90,6 +91,12 @@ export async function POST(request: Request) {
   const lastName = rest.join(' ')
   const tags = ['club-zero1', `club-city:${city.toLowerCase()}`]
   const note = `Club Zero1 interest — ${eventName} (${city}). Phone: ${contactNumber}.`
+  // Mirrored to the sheet after the response, so it never slows or fails the sign-up.
+  const saved = (result: 'updated' | 'created') => {
+    after(() => logToSheet('Interest', [name, email, contactNumber, city, eventName, result]))
+    return NextResponse.json({ ok: true })
+  }
+
   // Deliberately no emailMarketingConsent: the checkbox covers event contact, not
   // the store's marketing list, and writing it would resubscribe someone who
   // had previously opted out. The `club-zero1` tag is what segments this list.
@@ -115,7 +122,7 @@ export async function POST(request: Request) {
       })
       const error = result.customerUpdate.userErrors[0]
       if (error) return fail(error.message)
-      return NextResponse.json({ ok: true })
+      return saved('updated')
     }
 
     const result = await admin<{
@@ -147,11 +154,11 @@ export async function POST(request: Request) {
       })
       const retryError = retry.customerCreate.userErrors[0]
       if (retryError) return fail(retryError.message)
-      return NextResponse.json({ ok: true })
+      return saved('created')
     }
     if (error) return fail(error.message)
 
-    return NextResponse.json({ ok: true })
+    return saved('created')
   } catch (error) {
     console.error('[club-zero1] interest submission failed', error)
     return fail('We could not save your details. Please try again in a moment.', 502)

@@ -231,6 +231,38 @@ covers a blocked or missing camera.
 labelled *beyond the order history* rather than reported as zero. Lifting it
 needs `read_all_orders`, which Shopify approves case by case.
 
+## Google Sheets log
+
+Every submission is also appended to a Google Sheet (`lib/sheets.ts`), so the
+team can read and export it without Shopify admin. Times are India time (IST),
+written as `29/09/2026 08:00 PM`. Shopify stays the source of
+truth: the append runs after the response, and a failure is only logged
+(`sheet append failed`). Leave the env vars unset to turn it off.
+
+| Tab | Written by | Columns |
+| --- | --- | --- |
+| `Interest` | `/api/interest` | Time, Name, Email, Phone, City, Event, Shopify (created / updated) |
+| `Bookings` | `/api/checkout` | Time, Name, Email, Phone, Event, City, Venue, Variant, Qty, Checkout URL |
+| `Orders` | orders/create webhook | Time, Order, Order ID, Name, Email, Phone, Event, Payment status, Total, Currency, Items |
+| `Check-ins` | `/checkin/<token>` | Time, Order, Order ID, Slot, Code, Name, Event, City, Checked in at |
+
+`Bookings` are checkout attempts — some are never paid. `Orders` only takes
+orders from this site's checkout (soda orders are skipped) and includes
+pending-payment ones; check the payment status column. Each is logged once, on
+the first webhook delivery, so a failed append leaves a gap.
+
+### Setup
+
+1. Google Cloud console → create (or pick) a project → enable the
+   **Google Sheets API**.
+2. **IAM → Service accounts** → create one → **Keys → Add key → JSON**.
+3. Create the sheet with the four tabs above, named exactly, and paste each
+   tab's column names into row 1.
+4. **Share** the sheet with the service account's `client_email` as Editor.
+5. Set `GOOGLE_SHEETS_ID` (from the sheet URL), `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   (`client_email`) and `GOOGLE_SERVICE_ACCOUNT_KEY` (`private_key`, keeping the
+   `\n` escapes) in `.env.local` and in Vercel.
+
 ## Local development
 
 ```bash

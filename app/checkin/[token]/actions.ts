@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
+import { after } from 'next/server'
 import { CHECKIN_COOKIE, isStaff, passcodeMatches, staffCookieValue } from '@/lib/checkin-auth'
-import { decodeTicket, loadTicket, markCheckedIn } from '@/lib/tickets'
+import { istTime, logToSheet } from '@/lib/sheets'
+import { decodeTicket, loadTicket, markCheckedIn, ticketSlotKey } from '@/lib/tickets'
 
 export async function signIn(formData: FormData) {
   const code = String(formData.get('passcode') || '')
@@ -32,6 +34,20 @@ export async function checkIn(formData: FormData) {
   const ticket = await loadTicket(ref)
   if (!ticket?.paid) return
 
-  await markCheckedIn(ref)
+  const result = await markCheckedIn(ref)
+  if (!result.alreadyUsed) {
+    after(() =>
+      logToSheet('Check-ins', [
+        ticket.orderName,
+        ref.orderId,
+        ticketSlotKey(ref),
+        ticket.code,
+        ticket.buyerName,
+        ticket.event,
+        ticket.city,
+        istTime(result.at),
+      ])
+    )
+  }
   revalidatePath(`/checkin/${token}`)
 }

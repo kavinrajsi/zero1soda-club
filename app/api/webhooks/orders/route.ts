@@ -1,9 +1,62 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
+import { logToSheet } from '@/lib/sheets'
 import { newTicketKey, readTicketKey, writeTicketKey } from '@/lib/tickets'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+type Property = { name?: string; value?: string }
+
+type OrderPayload = {
+  id?: number
+  admin_graphql_api_id?: string
+  name?: string
+  email?: string | null
+  phone?: string | null
+  financial_status?: string
+  total_price?: string
+  currency?: string
+  note_attributes?: Property[]
+  line_items?: { product_id?: number; title?: string; quantity?: number; properties?: Property[] }[]
+}
+
+const CLUB_SOURCE = 'club.zero1soda.com'
+
+function property(list: Property[] | undefined, name: string) {
+  return list?.find((entry) => entry.name === name)?.value?.trim() || ''
+}
+
+/** The subscription is store-wide; only orders from this site's checkout belong in the sheet. */
+function isClubOrder(payload: OrderPayload) {
+  if (property(payload.note_attributes, 'Source') === CLUB_SOURCE) return true
+  return Boolean(
+    payload.line_items?.some(
+      (line) => property(line.properties, 'Event') || property(line.properties, 'Booking email')
+    )
+  )
+}
+
+function orderRow(payload: OrderPayload, orderId: string) {
+  const lines = payload.line_items ?? []
+  const booked = (name: string) =>
+    lines.map((line) => property(line.properties, name)).find(Boolean) || ''
+
+  // Order-level contact can be redacted without protected customer data access;
+  // the booking properties the checkout route set are always there.
+  return [
+    payload.name || '',
+    orderId,
+    booked('Booking name'),
+    booked('Booking email') || payload.email || '',
+    booked('Booking phone') || payload.phone || '',
+    booked('Event'),
+    payload.financial_status || '',
+    payload.total_price || '',
+    payload.currency || '',
+    lines.map((line) => `${line.title ?? ''} × ${line.quantity ?? 0}`).join('; '),
+  ]
+}
 
 /**
  * orders/create webhook. Gives every order an unguessable ticket key, which is
@@ -27,7 +80,7 @@ export async function POST(request: Request) {
     return new NextResponse('invalid signature', { status: 401 })
   }
 
-  let payload: { id?: number; admin_graphql_api_id?: string; line_items?: { product_id?: number }[] }
+  let payload: OrderPayload
   try {
     payload = JSON.parse(body)
   } catch {
@@ -41,6 +94,9 @@ export async function POST(request: Request) {
     // Shopify retries webhooks; keep the first key so existing QR codes stay valid.
     if (await readTicketKey(orderId)) return NextResponse.json({ ok: true, existing: true })
     await writeTicketKey(orderId, newTicketKey())
+    // Logged once, on the first delivery. A failed append is not retried: Shopify's
+    // retries take the `existing` path above, and the sheet is only a mirror.
+    if (isClubOrder(payload)) after(() => logToSheet('Orders', orderRow(payload, orderId)))
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[club-zero1] ticket key write failed', error)
